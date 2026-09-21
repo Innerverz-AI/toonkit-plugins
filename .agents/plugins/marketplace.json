@@ -1,0 +1,20 @@
+{
+  "name": "toonkit",
+  "interface": {
+    "displayName": "Toonkit"
+  },
+  "plugins": [
+    {
+      "name": "toonkit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/toonkit"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

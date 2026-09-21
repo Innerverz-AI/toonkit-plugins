@@ -1,0 +1,36 @@
+{
+  "name": "toonkit",
+  "version": "0.1.0",
+  "description": "Generate images and videos and work with Toonkit canvases through MCP.",
+  "author": {
+    "name": "Innerverz"
+  },
+  "homepage": "https://toonkit.io",
+  "skills": "./skills/",
+  "mcpServers": {
+    "toonkit": {
+      "type": "http",
+      "url": "https://toonkit.io/mcp",
+      "oauth": {
+        "clientId": "toonkit-codex"
+      }
+    }
+  },
+  "interface": {
+    "displayName": "Toonkit",
+    "shortDescription": "Create images and videos with Toonkit.",
+    "longDescription": "Connect your Toonkit account to generate images and videos and work with canvases using the server-provided generation guide.",
+    "developerName": "Innerverz",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "websiteURL": "https://toonkit.io",
+    "defaultPrompt": [
+      "Create an image with Toonkit.",
+      "Help me work with a Toonkit canvas."
+    ]
+  },
+  "license": "MIT",
+  "repository": "https://github.com/Innerverz-AI/toonkit-plugins"
+}

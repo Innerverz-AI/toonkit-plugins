@@ -1,0 +1,16 @@
+{
+  "name": "toonkit",
+  "owner": {
+    "name": "Innerverz"
+  },
+  "plugins": [
+    {
+      "name": "toonkit",
+      "source": "./plugins/toonkit",
+      "description": "Generate images and videos and work with Toonkit canvases through MCP."
+    }
+  ],
+  "metadata": {
+    "description": "Toonkit image, video, and canvas tools for AI assistants."
+  }
+}
