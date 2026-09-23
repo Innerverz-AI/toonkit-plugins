@@ -4,7 +4,7 @@
   const quote=s=>"'"+s.replaceAll("'","'\\''")+"'";
   const require=(ok,msg)=>{if(!ok)throw Error(msg)};
   require(options?.skill?.startsWith('/')&&options?.runDir?.startsWith('/'),'Resolve absolute skill/run paths');
-  const key='3dref-v3:'+options.runDir;
+  const key='3dref-v4:'+options.runDir;
   let kept=load(key),serial=kept?.serial||0,clearState=false;
   require(!kept?.busy||(action==='recover'&&args.confirmedStopped===true),'One active runtime call per run');
   async function file(name){
@@ -42,7 +42,7 @@
   }
   if(!kept){
     const suffixes=['toonkit_create_canvas','toonkit_canvas_reference3d_catalog','toonkit_canvas_reference3d_create',
-      'toonkit_canvas_reference3d_get_scene','toonkit_canvas_reference3d_edit','toonkit_get_canvas'];
+      'toonkit_canvas_reference3d_get_scene','toonkit_canvas_reference3d_edit','toonkit_get_canvas','toonkit_canvas_group_nodes','toonkit_get_canvas_mutation'];
     const prefixes=toolNames.filter(n=>n.endsWith(suffixes[0])).map(n=>n.slice(0,-suffixes[0].length))
       .filter(p=>suffixes.every(s=>toolNames.includes(p+s)));
     const prefix=options.prefix??(prefixes.length===1?prefixes[0]:null);
@@ -75,8 +75,8 @@
   }
   require(!kept.unhealthy,'Runtime journal is uncertain; recover to stop the worker, then reopen from disk before mutations');
   if(kept.closed){
-    require(action==='finishExport','This run is already complete');
-    return {stage:'complete',...kept.state.events.findLast(e=>e.type==='complete').result};
+    require(action==='group'||action==='finishExport','This run is already delivered');
+    return {stage:'delivered',...kept.state.events.findLast(e=>e.type==='delivered').result};
   }
   kept.busy=true;store(key,kept);
   function browserAction(input){
@@ -95,21 +95,28 @@
       // Retained before yielding code: interruption resumes read-only, never a blind re-export.
       return {stage:'browser-action',code:browserAction(args)};
     }
-    const metrics=kept.state.metrics ||= {mcpCalls:0,savedReads:0,waitMs:0,journalWrites:0};
+    const metrics=kept.state.metrics ||= {...(kept.state.events.findLast(e=>e.type==='metrics')?.value||{mcpCalls:0,savedReads:0,waitMs:0,journalWrites:0})};
     const bridge=eval(kept.bridgeCode)({
       call:async(suffix,input)=>{metrics.mcpCalls++;if(suffix.endsWith('_get_scene'))metrics.savedReads++;
         return tools[kept.prefix+suffix](input);},
       append:async events=>{await rpc('append',{events});metrics.journalWrites++;},
       sleep:async ms=>{metrics.waitMs+=ms;await env.sleep(ms);}
     },kept.state);
-    require(['createProject','createScene','advance','finishExport'].includes(action),'Unknown runtime phase');
-    const result=action==='createProject'?await bridge.createProject(args.name):action==='createScene'?
+    require(['useProject','createProject','createScene','advance','finishExport','group'].includes(action),'Unknown runtime phase');
+    const result=action==='useProject'?await bridge.useProject(args):action==='createProject'?await bridge.createProject(args.name):action==='createScene'?
       await bridge.createScene(args.name,{projectVisible:args.projectVisible}):await bridge[action](args);
     if(result.ticket)kept.ticket=result.ticket;
     if(result.stage==='export-ready'&&args.browser)result.browserCode=browserAction(args.browser);
-    if(result.stage==='complete'){
+    if(result.stage==='delivered'){
+      await rpc('append',{events:[{type:'metrics',value:{...metrics}}]});
       await rpc('close');kept.worker=null;kept.closed=true;
     }
     return {...result,metrics:{...metrics}};
-  }finally{kept.serial=serial;kept.busy=false;store(key,clearState?null:kept)}
+  }finally{
+    try{
+      if(kept.worker&&!clearState&&!kept.closed&&!kept.unhealthy&&kept.state.metrics){
+        const event={type:'metrics',value:{...kept.state.metrics}};await rpc('append',{events:[event]});kept.state.events.push(event);
+      }
+    }finally{kept.serial=serial;kept.busy=false;store(key,clearState?null:kept)}
+  }
 })

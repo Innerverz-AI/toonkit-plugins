@@ -6,9 +6,11 @@ Generate images and videos and work with Toonkit canvases from **Codex** or
 **Claude Code**. This plugin bundles two shared skills with an authenticated MCP
 connection to Toonkit. No local MCP server is required.
 
-This is an initial plugin package. Manifests and the skill have passed static
-validation. Installation, OAuth, and live tool calls still need end-to-end
-verification. The plugin is not listed in an official plugin directory.
+The shared previz compiler checks staging, actor motion and camera direction before
+writing a scene. See [CHANGELOG](CHANGELOG.md) for the current package version and
+[validation](validation/README.md) for measured coverage. Fresh installation and
+OAuth in both clients, and the Claude browser export, still need live verification.
+This repository is not listed in a host-managed official plugin directory.
 
 ## Requirements
 
@@ -21,8 +23,12 @@ For `3dref` previz additionally:
 
 - Python 3.9+ and a visible, logged-in browser the client can control
   (Codex's browser tool; in Claude Code, [Claude in Chrome](https://code.claude.com/docs/en/chrome)).
-- Node 20+ for composed stock-human motion. The skill installs the pinned
-  `three@0.184.0` into a writable cache on first use.
+- Node 20+ and npm. The shared compiler/relay requires Node and installs pinned
+  `three@0.184.0` into a writable cache on first use. Motion assets are fetched from
+  public sources and checksum-verified; subsequent cached runs can work offline
+  until scene authoring. Browser/MCP access is still required for delivery.
+- The retained Codex launcher uses a POSIX shell. Other hosts use the portable
+  Python/Node relay; other operating systems still need a host smoke test.
 
 Installing the plugin and authorizing your Toonkit account are separate steps.
 Do not put passwords or access tokens in the plugin files.
@@ -83,7 +89,10 @@ plugins/toonkit/
   .codex-plugin/plugin.json            Codex manifest + MCP configuration
   .claude-plugin/plugin.json           Claude Code manifest + MCP configuration
   skills/toonkit-project-manager/      Production planning, cost gates, AI generation
-  skills/3dref/                        3D previz authoring and export
+  skills/3dref/                        Shared compiler, runtime/relay, references
+validation/                           Development tests; not skill runtime inputs
+scripts/release.py                     Version/path checks and reproducible archive
+.github/workflows/validate.yml         CI checks and tag-matched artifacts
 ```
 
 Both clients install the same plugin directory and share the same skills. Each manifest
@@ -93,29 +102,46 @@ Neither sets an OAuth client ID: Toonkit supports
 (CIMD), so Codex and Claude Code identify themselves with their own published
 metadata document and no registration step is needed.
 
-`3dref` has two execution routes over the same compiler and run journal. Codex
-uses a packaged runtime that keeps payloads in its tool memory. Claude Code, and
-other hosts whose model calls MCP tools one at a time, use `scripts/direct.py` to
-relay each request. On that route every batch passes through the model context,
-so long or body-baked shots cost noticeably more tokens. Codex's
-`agents/openai.yaml` disables implicit invocation of `3dref`. Claude Code has no
-equivalent that Codex's plugin validator accepts, so there the skill description
-alone limits it to explicit requests.
+`3dref` has one production spec (`3dref-production-v2`), compiler and bridge for
+one or multiple actors. Codex keeps payloads in retained tool memory; Claude Code
+uses `scripts/direct.py` to relay the same bridge's requests. The portable route
+passes payloads through model context and costs more tokens. Its browser handoff
+uses Claude's own browser tools; the Codex browser helper is not a Claude API.
+Codex's `agents/openai.yaml` preserves explicit-only invocation. Claude Code uses
+the shared skill description for the same scope.
+
+Previz uses simple shot-relevant boxes, stock humans and one camera. A location
+sheet supplies spatial relationships; it does not request a detailed city model.
+The compiler checks finite support surfaces, wall-as-floor roll direction, shared
+body/root slow motion, camera framing, holds, collisions and the emitted sparse
+keys. Measured gait mismatch blocks by default; deliberately stylized motion must
+be declared with a reason. These checks are not foot-plant IK or artistic approval.
+
+The shipped renderer profile is tied to verified public editor assets. A changed
+profile stops scene edits until maintainers revalidate it; users do not reverse
+engineer the renderer per task. Imported rigs, arbitrary geometry and patching old
+scenes are outside this release. Scene capacity is checked against the live MCP.
+Normal runs do not load development tests, local test logs or frame arrays into
+model context, and do not spend AI generation credits.
 
 If you previously connected with a fixed client ID (`toonkit-codex` or
 `toonkit-claude-code`), that connection keeps working. Authenticating through the
 plugin creates a separate connection; disconnect the old one in
 [connection settings](https://toonkit.io/en/settings/connections) if you no longer need it.
 
-## Verification remaining
+## Verification scope
 
-- Fresh installation, OAuth consent, and a read-only tool call in both clients.
-- Shared skill loading and generation guide retrieval.
-- Migration from an existing manually configured MCP connection without duplicates.
-- Paid generation and result retrieval using an explicitly authorized account and budget.
-- `3dref` end to end on both routes: live catalog check, scene authoring, editor
-  Export and output correlation. The Claude Code route is covered only by offline
-  tests against mocked responses so far.
+- Offline suite: 40 tests covering geometry, motion/timing, scene fidelity,
+  recovery and export guards, including a full cold-process portable lifecycle.
+- Live Codex smoke check of the candidate: three actors, wall roll, slow motion,
+  saved-scene comparison and one correlated decoded export. This does not certify
+  every shot, renderer update or client.
+- Still unverified live: fresh plugin installation/OAuth in both clients, Claude
+  browser export, other operating systems and paid generation. Paid generation
+  guidance and authentication configuration are unchanged.
+
+For development and release commands, see [CONTRIBUTING](CONTRIBUTING.md).
+Tests run at development/release time, not on every user's previz request.
 
 ## Local development
 

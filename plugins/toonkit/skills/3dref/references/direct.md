@@ -1,63 +1,44 @@
-# Direct execution: model-relayed MCP calls
+# Portable relay
 
-Read once per task on a host whose model calls MCP tools one at a time and has no Codex tool memory, such as Claude Code. Same compiler, bundle, journal, idempotency keys and gates as [execution](execution.md); the packaged step helper `scripts/direct.py` replaces the launcher, bridge and journal worker. Every request passes through model context, so cost grows with stored keys: prefer native presets and root/camera-only motion, and report the batch count.
+Use on a tool host without retained orchestration memory. It uses the **same bridge.js**, compiled bundle, journal, guards and phases as [execution](execution.md); there is no separate scene implementation or two-actor adapter. Python 3.9+ and Node 20+ are required.
 
-## 1. Compile
+After compilation, call:
 
-Exactly as in execution §1. Write the user-specific spec into a new run directory, run `compiler.py`, review its summary. `<helper>` below means `python3 <skill>/scripts/direct.py <run>` with resolved absolute paths.
+`python3 -B <skill>/scripts/direct.py <run> step <phase> --args '<JSON>'`
 
-## 2. Connect and show
+Arguments can instead be a JSON file path. The process locks the journal, replays already recorded responses locally and returns one compact result:
 
-Discover the connected Toonkit tools; names may carry a client prefix, so use the tool whose name ends with the documented suffix. If several Toonkit connections qualify, select the intended one explicitly. No AI-generation catalogs, balance, SSOT or OAuth extraction.
+- `tool-request`: call the connected MCP tool with suffix `tool` and the exact `arguments`. Store its complete envelope in a temporary response file (or pipe it on stdin), then `direct.py <run> accept <ioId> <response-file-or->`. Resume the same phase/arguments.
+- `wait`: wait the given milliseconds, then resume the same phase. No request replay with a fresh idempotency key.
+- Phase result: follow the same browser/execution lifecycle. `advance` automatically includes verification/export preparation. The supported phases are useProject/createProject/createScene/advance/finishExport/group.
+- `error`: stop automatic writes and read its concrete reason.
 
-Read `toonkit_canvas_reference3d_catalog` once with `pageSize:200`, then `<helper> requirements`. The catalog must have commandSchemaVersion 1, templateVersion 1, no nextCursor, every listed limit at least the required value, the duration inside `limits.durationSeconds`, the fps and aspect in their enum entries, every listed operation and every listed preset under its slot. Otherwise stop and report the difference.
+Every step runs in a fresh process. IO results, remote requests, accepted receipts and bindings are durable. A response can be accepted twice only if identical. A lost remote response uses the original issued IO request. An already accepted write is not repeated. Do not edit the bundle or journal to skip a guard.
 
-A visible logged-in browser is required. In Claude Code use Claude in Chrome (`claude --chrome` or `/chrome`); if it is unavailable, explain the blocker instead of authoring blind. Reuse a suitable Toonkit tab, otherwise open a visible one; do not replace unrelated work.
+## Visible browser Export on Claude Code
 
-## 3. Relay requests
+The scene/verification bridge is shared. `browser-export.js` uses Codex's `tab.playwright` API and **must not be executed in Claude in Chrome**. On Claude Code, enable its visible browser connection (`claude --chrome` or `/chrome`) and read the connected tools' current declarations. Do not invent a Codex tab adapter. If browser control is unavailable, stop before scene authoring. This host's Export handoff is:
 
-Each `<helper> request …` prints `{id, tool, arguments}` and journals it first. Call that tool with `arguments` exactly as printed: never retype, round, reorder or edit values. If the client stored a long output in a file, read the file and pass its `arguments`. Then record the tool result with `<helper> accept <id> '<result>'`. On a server rejection record `<helper> reject <id> '<error>'` and stop. If the response was lost, run the same `request` again: it replays the identical key, revision and commands. `<helper> status` names the next step when resuming a run.
-
-| Step | Helper, then tool | Gate |
-|---|---|---|
-| Project | `request canvas --name <name>` | Open the returned URL in the visible browser. |
-| Scene | `request scene --name <name>` | Follow the mutation with `toonkit_get_canvas_mutation` until APPLIED. If a receipt carries `blockedReason`, relay its `blockedHint` and wait. Open that node's editor and keep the viewport and timeline visible. |
-| Batches | `request batch --scene '<get_scene result>'` | Repeat until `status` leaves `dispatch`. |
-
-Scene evidence for `request batch` is `toonkit_canvas_reference3d_get_scene` with the bound canvas/node, `view:"saved"`:
-
-- Before batch 0, read the unfiltered scene (`pageSize:200`); the helper checks the fresh correction-free template.
-- Before later batches, read the header only with `objectIds:["-"]`. A filter that matches no object still returns revision, sequence, pending and total counts. If the server rejects that filter, pass `objectIds:[<camera id>]` instead.
-
-`application-pending` means the previous batch is admitted but not applied: follow its mutation, then read fresh scene evidence. Never resubmit an admitted write. The helper stops on conflict, normalization, a concurrent sequence change, another armed 3D node or a scene that is not fresh. Do not rebase onto other edits.
-
-All root/camera keys precede action overlays by construction; do not play back or export between batches.
-
-## 4. Verify
-
-After the last batch is APPLIED, read `get_scene(view:"saved", pageSize:200)` once and run `<helper> verify <evidence>`. It compares object and key counts, every stored numeric field to 0.001, inherited poses, preset slot and actor scale, like the Codex bridge. Claude Code saves a result above its MCP output limit to a file and returns the path; pass that path. If the result stayed inline and is too large to relay exactly, do not retype it: report numeric readback as unverified and keep the header checks.
-
-## 5. Export once
-
-If this run's changes need Save, perform it through the normal UI and observe the updated state; unexpected dirty user changes stop export. Read `toonkit_get_canvas` for the canvas and run `<helper> baseline <evidence>`. It durably issues the export ticket and returns `allowClick`.
-
-1. Only if `allowClick` is true, operate the editor's uniquely enabled Export control once. `allowClick:false` means a ticket already exists: inspect progress and output, never click again automatically. If whether a click happened cannot be established, ask for a narrow retry decision.
-2. Keep the render visible and wait for Export to return. For a dialog or error, make one targeted observation. No Play clicks, hidden stores, private endpoints, routine screenshots or a second export route for the same ticket.
-3. Read `toonkit_get_canvas` and run `<helper> collect <evidence>`; `export-pending` means read again later, not export again.
-4. Read the new output node's decoded video metadata with one read-only page script through the browser tool:
+1. Keep the exact scene editor visible. Using the normal browser read tool, check the returned ticket's `expectedActorNames`, `expectedDuration * sceneFps` total frames, loaded asset names, clean disabled Save, and one enabled Export. Reopen a stale editor from the saved scene; never Save its initial state over verified work. Resolve only this run's dirty changes.
+2. Keep the first returned `export-ready` ticket. Only its `allowClick:true` permits one click of the observed Export control through the browser's normal interaction tool. Issuing a ticket is durable; a recovered ticket has `allowClick:false`. Never resume a lost click by inventing a new ticket. If click occurrence cannot be established, ask for a narrow retry decision.
+3. Wait in bounded windows for the visible render to finish. Do not poll MCP during frame capture. Observe a dialog/error once if present. No second Export, private endpoints/stores, page-JS clicks, Play loops or screenshots as status checks.
+4. After render completion (or a new decoded output), collect public DOM metadata with the browser's read-only JavaScript tool. This deliberately excludes the short video preview in a 3D node:
 
    ```js
-   Array.from(document.querySelectorAll('video')).map(v=>({outputVideoNodeId:v.closest('[data-id]')?.getAttribute('data-id')||null,
-     durationSeconds:Number.isFinite(v.duration)?v.duration:null,width:v.videoWidth,height:v.videoHeight,
-     readyState:v.readyState,error:v.error?{code:v.error.code}:null}))
+   Array.from(document.querySelectorAll('video')).flatMap(v => {
+     const n = v.closest('[data-id]');
+     if (!n || !n.classList.contains('react-flow__node-video') ||
+         v.readyState < 2 || !Number.isFinite(v.duration) ||
+         v.videoWidth <= 0 || v.videoHeight <= 0 || v.error) return [];
+     return [{outputVideoNodeId:n.getAttribute('data-id'),
+       durationSeconds:Number.isFinite(v.duration)?v.duration:null,
+       width:v.videoWidth,height:v.videoHeight,readyState:v.readyState,
+       error:v.error?{code:v.error.code}:null}];
+   })
    ```
 
-   Pass the entry whose `outputVideoNodeId` equals the collected output node to `<helper> complete '<entry>'`. It checks duration, dimensions, decode readiness and aspect. If the metadata is not ready yet, recheck once after meaningful progress. Ambiguous identity is partial verification, not success.
+5. Relay `finishExport` with `{ticketId,stage:"render-complete",videos:[observed metadata]}` (or `stage:"metadata-ready"` when decoded). Pass `videos:[]` until decoding is ready; report a visible video error separately instead of retrying Export. The same bridge verifies the new source edge, exact output ID, duration, dimensions/aspect and decode status. For `metadata-pending`, focus that exact returned output ID once through normal UI, collect metadata again and resume `finishExport`; never substitute another video. Then `group` for standalone delivery.
 
-Typically stop after two minutes of stalled scene application or five minutes of stalled export; preserve the work and report the concrete state.
+Loaded profile filenames can be read once from the public DOM with `Array.from(document.querySelectorAll('script[src]')).map(s=>s.getAttribute('src').split('/').pop().split('?')[0])`. Pass observed names to `advance`; do not copy the expected list and call it observed. Keep browser observations compact. The same application/export stopping limits in [execution](execution.md) apply.
 
-## Group and deliver
-
-If this run is the whole user request, run `<helper> request group --title <title>`, call `toonkit_canvas_group_nodes`, accept the receipt and follow its mutation. If a coordinating workflow selected this shot, return the source and output node IDs for its single final group instead; existing groups cannot be regrouped.
-
-Report as in execution's delivery section: project link, source/output/media IDs, actual duration/dimensions, scene FPS and the verified/unverified scope, including any numeric readback left unverified. A playable previz is not certified R2V input.
+This route has more model handoffs and transfers each MCP payload through the host. It is portable, not equally token-efficient. Prefer retained runtime when available. Delete only temporary response files created by this relay after journal acceptance; the three run artifacts preserve recovery.

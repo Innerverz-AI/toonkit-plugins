@@ -1,59 +1,37 @@
 ---
 name: 3dref
-description: "When explicitly selected, create Toonkit 3D previz with MCP-authored staging, source-based motion and camera, a visible browser timeline, and browser-runtime video export. Use for requested previz or a workflow that specifically selects this stage; not every video request."
+description: Create ToonKit 3D camera/action previz when explicitly requested or selected for a production stage. Supports one or multiple stock actors, calibrated proxy staging, source motion, timing and normal browser Export; deterministic and credit-free.
 metadata:
-  short-description: "MCP authoring, visible timeline, efficient export"
+  short-description: Multi-actor camera/action previz with calibrated staging
 ---
 
-# 3Dref
+# 3D reference previz
 
-Deliver the editable scene and exported reference video. Preserve requested duration, FPS, action, camera and spatial relationships. Speak in the user's language.
+Deliver an editable ToonKit scene and its playable source-linked video. Use simple geometry to preserve the shot's spatial relationships. A location panorama is context; construct only surfaces, silhouettes and obstacles that affect the camera or action. Do not recreate the artwork's detail.
 
-## Selective invocation
+## One path, any supported actor count
 
-Use for an explicit 3Dref/3D previz request or a coordinating workflow that specifically selects a shot needing spatial/action/camera reference. Do not add previz to every video or shot. A one-minute production does not imply one minute of previz.
+1. Read [production input](references/production-input.md) and the applicable [execution route](references/execution.md). Read [source motion](references/body-motion.md) only for composed/retimed actions. No AI catalogs, balance, quotes or generation SSOT for deterministic previz.
+2. Write one `3dref-production-v2` spec from this user's references and direction. Declare actors, desired object sizes/centers, support states throughout every actor's timeline, camera targets/moves and framing beats. Do not write per-frame arrays or scene-specific adapter code.
+3. Run the packaged compiler in a fresh run directory. It resolves actual primitive pivots, bakes each distinct motion once, solves any wall-floor roll sign, removes irrelevant geometry, reduces keys, simulates the renderer's interpolation and checks the resulting motion. A failed constraint is a planning failure to resolve locally; never waive it merely to reach Export.
+4. Use the packaged runtime or [portable relay](references/direct.md). Both execute the same bridge for one or multiple actors, new or existing canvases. Keep the exact editor visible. All base keys precede pose overlays. On pending application, wait for the same mutation; on conflict/rejection, stop with the concrete evidence.
+5. Compare the complete saved scene with the bundle. Confirm the editor shows the expected actors and frame count and has a clean Save state; stale initial editor state must be reopened from the saved scene before Export. Run one journaled UI Export. Correlate a new video by source edge and exact output node, then verify decoded duration/dimensions/error. The 3-second preview inside a 3D node is never an output.
 
-**Deterministic previz is not AI generation.** Do not read the generation SSOT, model catalogs, generation guide, balance or quotes merely to build/render this scene. Those belong to an actual requested AI stage. Do not buy an AI motion/image/video to fill missing capability without authorization.
+## What the package owns
 
-## Boundaries
+- No prior project, local test log, conversation or session-only function is a dependency. A passing run keeps only `spec.json`, `compiled.json`, `journal.jsonl`; failed planning preserves `diagnostic.json`. The journal contains bindings, requests, receipts and completion; cold recovery must use them.
+- The model chooses creative intent and a compact specification. Python/Node own frame calculation, constraints, batching, ID binding, retries, readback and output identity. Load the launcher once into tool memory; emit summaries, not arrays or helper source.
+- Current production support: calibrated boxes, fresh stock humans, one animated camera, pinned compatible FBX motion and the live MCP capacity. Actor count is capacity-bound, not fixed at two. Unsupported imports/geometry need a verified profile and compiler support, not an improvised bypass.
+- The renderer contract ships in `scripts/engine-profile.json`, with public-source checksums. Confirm the loaded editor assets match it before scene writes. Changed assets stop production until the profile is revalidated. Do not reverse-engineer the app on every production request; profile maintenance is a release task.
+- All actor frames need a real support face, a bounded explicitly intended flight, or a transfer with both named faces. A smooth curve is not evidence of contact. Walls-as-floor require the projected outward normal to point screen-up.
+- Source poses and root travel share the requested time map. Bone markers have an explicit object-local coordinate convention; root height is applied once. Source-preserving gait can still slide if route speed and stride disagree; the package checks measured stride and reports any explicitly intended mismatch and does not claim physical foot-plant IK.
 
-- Scene, objects, motion, timing, camera and keys: **Toonkit MCP only**.
-- Browser: **mandatory visible project and exact node editor/timeline throughout authoring**, then necessary Save and normal UI Export. Reuse a suitable existing browser/tab, otherwise create a visible task tab.
-- Checks: numerical/data fidelity, then new source-linked output plus scoped decoded-video metadata. No routine screenshots, frame extraction, anatomy/composition QA or repeated Play/scrub loops.
-- Never author with mouse/keyboard, use hidden browser stores/functions or private endpoints, extract OAuth secrets, or substitute a different renderer.
+## Boundaries and completion
 
-Require authenticated MCP and a controllable logged-in browser. Python 3.9+ supports native-motion/camera planning; composed stock-human motion additionally needs Node 20+ and pinned three@0.184.0. Reuse a writable dependency/FBX cache. No credentials or prior project are bundled.
+Scene/canvas edits use MCP only. Browser work is scoped to showing/opening the editor, readiness, Save/Export, and displaying the resulting media. No hidden application stores, private renderer/export endpoints or substitute renderer. No routine screenshot contact sheets, repeated playback loops or paid generation to fill a missing motion capability.
 
-## Execute
+Do not silently lower FPS, shorten the shot, split a requested take or erase existing work to fit limits. Authorization to create previz does not authorize AI generation. Stop before new mutations if the compiled preflight, renderer profile, fresh-actor contract, revision or capacity no longer holds.
 
-Choose the route by host. With Codex's retained tool memory (`functions` with exec_command/write_stdin), read [execution](references/execution.md) once. A host whose model calls MCP tools one at a time, such as Claude Code, reads [direct execution](references/direct.md) once instead: same compiler, journal and gates, relayed through the packaged step helper. Run packaged helpers without reading their internals into model context. The small emitted browser action is the sole source-transfer exception, required by the separate browser tool surface.
+Numerical support uses finite faces and source bone markers; it is not a skin/sole IK or artistic-quality certificate. Distinguish calculated intent, saved fidelity, decoded output and human visual acceptance. Keep the result visible, group this run's source/output, and return the canvas link with actual duration/dimensions and scene FPS. Export success alone is not a quality pass.
 
-One user-specific spec → compiler → retained runtime → single export transaction. The runtime owns connection binding, durable recovery, adaptive application waits, saved verification and output correlation. Run the packaged launcher instead of rebuilding adapters. No bundled scenarios, past project IDs, test results or example recipes are production inputs. Emit summaries, never full arrays or both MCP envelope copies.
-
-Normal export after preparation: one browser call for click/wait/DOM metadata, then one runtime call for source-linked output correlation and completion. Longer rendering resumes the same ticket without another click. Do not perform redundant get_media, media download or metadata-probe loops.
-
-Open the exact editor/timeline before bulk dispatch. Finish all root/camera keys, then action overlays, before playback/export. Accepted PENDING means wait, not resubmit. Stop on rejection, incompatible scene, concurrent edit, changed source checksum or missing prerequisites. Recover uncertain delivery with the exact request/key.
-
-## Preserve quality
-
-Prefer native presets for continuous gait. Joint fields are **bone-local additive corrections**, not absolute anatomical angles. No invented sine-wave limbs or mirrored knee/arm signs. Repeated preset calls replace one slot; they do not sequence clips.
-
-Compound stock-human motion needs a fresh correction-free unit-scale actor, exact baseline, source quaternion reconstruction, phase-locked native intervals and ordered overlays. Body owns jump height: no second parabola. Match ground travel to source cadence/support; an in-place jump needs planted anticipation/landing and flight-only travel. A blend is not foot-plant IK. Smooth camera independently of hip impulses and preserve framing/clearance margins.
-
-Unspecified defaults: 24 FPS, 16:9. Do not silently lower FPS, cut a required one-take, truncate duration or loosen tolerance to fit capacity.
-
-## Conditional references
-
-Read each required document completely once; do not reread unchanged material for reassurance.
-
-- [Body motion](references/body-motion.md): composed moving-character choreography, new source/rig, actor repair. Native-only movement needs no source-clip dependency setup.
-- [Direction](references/direction.md): new complex staging, root/camera paths or obstacles.
-- [MCP contract](references/mcp-contract.md): custom operations, revisions or schema changes.
-
-The execution and direct references include browser presentation/export; there is no second mandatory browser manual. The compiler is a fast path for fresh stock-human scenes, not a restriction on other MCP features.
-
-## Files and delivery
-
-Retain spec.json, compiled.json and journal.jsonl per run; reusable dependency/FBX caches are separate. One compiler process per run; the Codex route adds one persistent journal worker per uninterrupted run, the direct route one short helper call per step. No default body/trajectory/batch/request/receipt/contact-sheet files. Development tests are outside the installation package. Add diagnostics only when needed; never delete prior user files/scenes to claim efficiency.
-
-Keep the result visible. Return project link, IDs and concise executed/verified/unverified summary. Record actual duration/dimensions and **scene FPS**, not unmeasured encoded-file FPS. A playable export does not certify R2V acceptance; validate that reference through the actual generation contract/estimate only in a requested R2V stage.
+For underspecified shot design, read [direction](references/direction.md). For failed constraints or release-profile maintenance, read [verification model](references/preflight.md). Read [MCP contract](references/mcp-contract.md) only for a changed connected contract.

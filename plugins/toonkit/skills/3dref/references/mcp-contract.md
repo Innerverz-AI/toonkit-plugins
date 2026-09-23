@@ -1,6 +1,6 @@
 # MCP schema profile
 
-Read only for operations beyond the packaged compiler/runtime or a changed schema. This profile uses commandSchemaVersion=1 and templateVersion=1; the live catalog and connected tool declarations are authoritative. This is wire grammar, not a scene example or permission to overwrite user work.
+Read only for maintenance or a changed connected contract. Production does not bypass the packaged compiler/runtime. This profile uses commandSchemaVersion=1 and templateVersion=1; the live catalog and connected tool declarations are authoritative. This is wire grammar, not a scene example or permission to overwrite user work.
 
 ## Connected tools
 
@@ -12,7 +12,7 @@ Read only for operations beyond the packaged compiler/runtime or a changed schem
 | toonkit_canvas_reference3d_get_scene | canvasId, nodeId, view (saved/logical), optional objectIds, pageSize/cursor |
 | toonkit_canvas_reference3d_edit | canvasId, nodeId, current expectedRevision, idempotencyKey, commands |
 | toonkit_get_canvas | Saved canvas nodes/edges/media links; optional nodeIds |
-| toonkit_get_canvas_mutation | Mutation status by mutationId, with blockedReason/blockedHint while no tab can apply it. The Codex runtime polls saved scenes instead; the direct route follows each write here |
+| toonkit_get_canvas_mutation | Mutation status by mutationId, with blockedReason/blockedHint while no tab can apply it. Both packaged routes use signed logical scene barriers; this tool verifies final grouping |
 | toonkit_canvas_reference3d_export | canvasId, idempotencyKey, nodeId, expectedRevision, kind (video/image), cameraObjectId for image; queues a render in the user's Canvas tab. Not used by this skill (see Capability routing) |
 | toonkit_canvas_group_nodes | canvasId, idempotencyKey, title, nodeIds in workflow order; one group per completed user request, existing groups cannot be regrouped |
 

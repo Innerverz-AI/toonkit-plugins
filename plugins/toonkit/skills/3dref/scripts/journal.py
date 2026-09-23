@@ -26,7 +26,7 @@ def snapshot(run):
     bundle['digest']=expected
     events=[json.loads(line) for line in (run/'journal.jsonl').read_text().splitlines()]
     if not events or events[0].get('type')!='init' or events[0].get('digest')!=expected: raise ValueError('Journal/bundle mismatch')
-    if bundle.get('format')!='3dref-run-v3': raise ValueError('Use the matching runtime for this run format')
+    if bundle.get('format')!='3dref-run-v4': raise ValueError('Use the matching runtime for this run format')
     return {'bundle':bundle,'events':events}
 
 

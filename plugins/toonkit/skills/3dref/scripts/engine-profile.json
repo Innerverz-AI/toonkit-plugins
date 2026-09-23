@@ -1,0 +1,73 @@
+{
+  "id": "toonkit-web-2026-09-24-v1",
+  "schemaVersion": 1,
+  "verifiedDeploy": "fd3cd7cfd9f4eee54013135b2b3177fc26fde72d",
+  "requiredAssetNames": [
+    "3s5923ugb8f_f.js",
+    "2re2rwt1x47dg.js",
+    "21z7f1s7qws5o.js"
+  ],
+  "evidence": [
+    {
+      "url": "https://public-cdn.toonkit.io/_next/static/chunks/3s5923ugb8f_f.js",
+      "sha256": "5fea39dd1e7901c096c81e542b0444cc3011446ea348e32c2171ffb14b6b162c",
+      "facts": [
+        "box uses BoxGeometry(1,1,1)",
+        "all shape geometry is translated by -boundingBox.min.y before mesh creation",
+        "stock human normalized to 1.7m height, then translated to ground",
+        "additive pose corrections multiply source quaternion using YXZ"
+      ]
+    },
+    {
+      "url": "https://public-cdn.toonkit.io/_next/static/chunks/2re2rwt1x47dg.js",
+      "sha256": "36ff2739cf415e062e08bb17c059a01d9e71b6e147b3f97aafa5a1121d57fb24",
+      "facts": [
+        "camera film gauge 36 mm; effective horizontal gate 36*min(aspect,1)",
+        "legacy rotation channels use shortest-angle interpolation"
+      ]
+    },
+    {
+      "url": "https://public-cdn.toonkit.io/_next/static/chunks/21z7f1s7qws5o.js",
+      "sha256": "54036dc4f8cd194e876cb0078be054eb5bb3081e780afed66ac841ab84964133",
+      "facts": [
+        "v1 position/scale/lens and pose channels interpolate linearly",
+        "v1 object/camera rotation interpolates per-axis shortest angle",
+        "stock human joint tilt axes X/Z and twist Y",
+        "root retargeting fixes X/Z and preserves source Y plus rest-hip offset"
+      ]
+    }
+  ],
+  "primitives": {
+    "box": {
+      "bounds": {
+        "min": [
+          -0.5,
+          0,
+          -0.5
+        ],
+        "max": [
+          0.5,
+          1,
+          0.5
+        ]
+      },
+      "pivot": "bottom-center"
+    }
+  },
+  "camera": {
+    "filmGaugeMm": 36,
+    "near": 0.05,
+    "far": 40
+  },
+  "interpolation": {
+    "transformRotation": "shortest-axis",
+    "position": "linear",
+    "pose": "linear-channels",
+    "lens": "linear"
+  },
+  "rig": {
+    "heightMeters": 1.7,
+    "jointConvention": "source quaternion multiplied by YXZ correction",
+    "rootRetarget": "fixed XZ, source Y plus rest-hip offset"
+  }
+}

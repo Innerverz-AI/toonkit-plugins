@@ -8,7 +8,7 @@
   const clone=x=>JSON.parse(JSON.stringify(x));
   const last=(type,id)=>E.findLast(e=>e.type===type&&(id===undefined||e.id===id));
   const require=(ok,msg)=>{if(!ok)throw Error(msg)};
-  require(B?.format==='3dref-run-v3'&&B.schemaVersion===1,'Unsupported compiled bundle');
+  require(B?.format==='3dref-run-v4'&&B.schemaVersion===1,'Unsupported compiled bundle');
   require(last('init')?.digest===B.digest,'Journal/plan mismatch');
   const runId=last('init').runId;
   require(typeof runId==='string'&&runId.length>=8,'Missing stable run ID');
@@ -40,14 +40,20 @@
     require(x&&typeof x==='object','Empty MCP result'); return x;
   }
   const read=async(s,a)=>unpack(await host.call(s,a));
+  const project=()=>last('project')||last('accepted','canvas')?.receipt;
   const bindings=()=>{
-    const c=last('accepted','canvas')?.receipt,s=last('accepted','scene')?.receipt;
+    const c=project(),s=last('accepted','scene')?.receipt;
     require(c?.canvasId&&s?.nodeId&&s.objectIds?.human&&s.objectIds?.camera,'Create receipt missing IDs');
-    return {canvasId:c.canvasId,nodeId:s.nodeId,actor:s.objectIds.human,camera:s.objectIds.camera,url:c.url};
+    const refs={};for(const event of E.filter(e=>e.type==='accepted'))Object.assign(refs,event.receipt.objectIds||{});
+    const tokens={'@camera___________________':s.objectIds.camera};
+    for(const a of B.actors)if(a.templateSlot||refs[a.clientRef])tokens[a.token]=a.templateSlot?s.objectIds[a.templateSlot]:refs[a.clientRef];
+    return {canvasId:c.canvasId,nodeId:s.nodeId,actor:s.objectIds.human,camera:s.objectIds.camera,tokens,url:c.url};
   };
   function bound(commands) {
-    const ids=bindings();
-    return JSON.parse(JSON.stringify(commands).replaceAll('@actor____________________',ids.actor).replaceAll('@camera___________________',ids.camera));
+    const ids=bindings();return clone(commands).map(c=>{
+      if(c.objectId?.startsWith('@')){require(ids.tokens[c.objectId],'Unbound owned object '+c.objectId);c.objectId=ids.tokens[c.objectId];}
+      return c;
+    });
   }
   function requestArgs(e) {
     return e.batch===undefined?clone(e.args):{...e.args,commands:bound(B.batches[e.batch].commands)};
@@ -56,12 +62,14 @@
     if(last('failed',id))throw Error('Rejected request '+id+'; review before a new scoped run');
     const done=last('accepted',id);if(done)return done.receipt;
     let intent=last('request',id);
+    if(!intent)require(B.summary?.checks?.preflight?.passed===true&&B.summary.checks.preflight.support?.passed===true&&B.summary.checks.preflight.postReduction===true&&B.summary.checks.preflight.engineProfile===B.engineProfile?.id,'New writes require the all-frame preflight gate; recompile the direction before authoring');
     if(!intent)intent=await log({type:'request',id,suffix,args:{...args,idempotencyKey:`3dref-${runId}-${id}`},...(batch===undefined?{}:{batch})});
     let receipt;
     try{receipt=await read(intent.suffix,requestArgs(intent))}
     catch(e){if(e.serverError)await log({type:'failed',id,error:e.serverError});throw e}
     // A transport exception remains unresolved: resume replays this exact key/request.
-    require(receipt.mutationId&&['PENDING','APPLIED'].includes(receipt.status),'Incomplete mutation receipt; resume exact request');
+    if(suffix==='toonkit_create_canvas')require(receipt.canvasId&&receipt.url,'Incomplete canvas receipt; resume exact request');
+    else require(receipt.mutationId&&['PENDING','APPLIED'].includes(receipt.status),'Incomplete mutation receipt; resume exact request');
     // Coalesce this receipt with the next durable request. On crash, replay the
     // prior exact idempotency key; never dispatch without the next request ACK.
     await log({type:'accepted',id,receipt,acceptedAt:now()},true);return receipt;
@@ -99,7 +107,7 @@
       if(pause)await host.sleep(pause);
     }
     for(;;){
-      const s=await read('toonkit_canvas_reference3d_get_scene',{canvasId,nodeId,view:'saved',pageSize:200,...(all?{}:{objectIds:[actor,camera]})});
+      const s=await read('toonkit_canvas_reference3d_get_scene',{canvasId,nodeId,view:'logical',pageSize:200,...(all?{}:{objectIds:['__3dref_header_only__']})});
       require(!s.conflict&&!s.initializationRequired&&!s.compatibility?.length,'Scene conflict/normalization requires review');
       if(s.materialized&&s.appliedThroughSeq>=currentSeq()&&s.pendingCount===0){
         require(s.revision&&!s.nextCursor,'Incomplete saved scene');
@@ -151,13 +159,14 @@
       if(typeof a==='number'){require(typeof b==='number'&&Number.isFinite(b),'Missing numeric '+path);const e=Math.abs(a-b);maxError=Math.max(maxError,e);require(e<=.001001,'Stored value drift: '+path);fields++;return}
       if(Array.isArray(a)){require(b&&typeof b==='object','Missing vector '+path);a.forEach((v,i)=>match(v,Array.isArray(b)?b[i]:b[['x','y','z'][i]],path+'.'+i));return}
       if(a&&typeof a==='object'){require(b&&typeof b==='object','Missing field '+path);for(const k of Object.keys(a))match(a[k],b[k],path+'.'+k);return}
-      require(a===b,'Stored field mismatch '+path);fields++;
+      if(path.endsWith('.color')&&/^#[0-9a-f]{6}$/i.test(a)&&typeof b==='string')require(a.toLowerCase()===b.toLowerCase(),'Stored color mismatch '+path);
+      else require(a===b,'Stored field mismatch '+path);fields++;
     }
     require(s.totalObjects===exp.size,'Unexpected object count/concurrent edit');
     for(const [id,e] of exp){
       const o=s.objects.find(x=>x.id===id);if(!o&&!all)continue;require(o,'Missing stored object '+id);
       for(const [k,v] of Object.entries(e))if(k!=='keys')match(v,o[k],id+'.'+k);
-      if(o.kind==='human'&&id===bindings().actor){
+      if(o.kind==='human'){
         require(['x','y','z'].every(k=>o.transform?.scale?.[k]===1),'Actor scale changed');
         require(!Object.values(o.pose||{}).some(v=>Object.values(v).some(n=>n!==0)),'Unexpected base pose');
       }
@@ -167,7 +176,7 @@
         if(o.kind==='human'){
           const pose=k.pose||{}, want=p.pose||{};
           require(Object.keys(pose).length===Object.keys(want).length,'Unexpected inherited pose at '+frame);
-          if(id===bindings().actor)match([1,1,1],k.transform?.scale,'key.scale');
+          match([1,1,1],k.transform?.scale,'key.scale');
         }
         if(o.kind==='camera'&&e.camera)for(const field of ['near','far'])match(e.camera[field],k.camera?.[field],'key.camera.'+field);
       }
@@ -186,18 +195,26 @@
     // State is serializable; store it between model turns, journal permits restart.
     state,
     catalog:()=>exclusive(catalog),
+    useProject:({canvasId,url})=>exclusive(async()=>{
+      require(typeof canvasId==='string'&&canvasId.length>0&&typeof url==='string'&&/^https:\/\/toonkit\.io\//.test(url),'Use an observed existing canvas ID/URL');
+      require(!last('accepted','scene'),'Project binding is immutable after scene creation');
+      await catalog();const c=await read('toonkit_get_canvas',{canvasId});require(c.canvasId===canvasId,'Canvas binding mismatch');
+      const prior=project();require(!prior||prior.canvasId===canvasId,'Cannot switch the run to another project');
+      if(!last('project'))await log({type:'project',canvasId,url});return {canvasId,url};
+    }),
     createProject:(name)=>exclusive(async()=>{
       require(typeof name==='string'&&name.trim(),'Project name required');await catalog();
       const r=await write('canvas','toonkit_create_canvas',{name,aspectRatio:B.timing.aspect});
       require(r.canvasId&&r.url,'Missing project ID/URL');return {canvasId:r.canvasId,url:r.url};
     }),
     createScene:(name,{projectVisible=false}={})=>exclusive(async()=>{
-      require(projectVisible,'Show project browser before scene creation');const c=last('accepted','canvas')?.receipt;require(c,'Create project first');
+      require(projectVisible,'Show project browser before scene creation');const c=project();require(c,'Create or bind project first');
       const r=await write('scene','toonkit_canvas_reference3d_create',{canvasId:c.canvasId,name,template:'human_camera'});
       return {nodeId:r.nodeId,objectIds:r.objectIds,status:r.status};
     }),
-    dispatch:({editorVisible=false,maxBatches=1000,timeBudgetMs=45000}={})=>exclusive(async()=>{
+    dispatch:({editorVisible=false,engineAssetNames=[],maxBatches=1000,timeBudgetMs=45000}={})=>exclusive(async()=>{
       require(editorVisible,'Open this node editor and visible timeline first');
+      require(B.engineProfile.requiredAssetNames.every(n=>engineAssetNames.includes(n)),'Renderer profile mismatch: verify/update public engine contract before writing');
       require(Number.isInteger(maxBatches)&&maxBatches>0&&maxBatches<=1000,'Invalid batch window');
       require(timeBudgetMs>0&&timeBudgetMs<=45000,'Bounded dispatch window required');
       const deadline=now()+timeBudgetMs;await catalog();let sent=0;
@@ -231,7 +248,7 @@
       }
       const issued=last('export-ticket'),ids=bindings();
       if(!issued)await log({type:'export-ticket',id:runId,issuedAt:now()});
-      return {ticketId:runId,source3dNodeId:ids.nodeId,canvasId:ids.canvasId,
+      return {ticketId:runId,source3dNodeId:ids.nodeId,canvasId:ids.canvasId,canvasUrl:ids.url,expectedActorNames:B.actors.map(a=>a.name),engineAssetNames:B.engineProfile.requiredAssetNames,
         baselineVideoIds:last('export-baseline').videoIds,allowClick:!issued,
         expectedDuration:B.timing.durationSeconds,sceneFps:B.timing.fps};
     }),
@@ -246,6 +263,20 @@
       require(typeof n.mediaId==='string','Malformed exported media identity');
       const value={canvasId,source3dNodeId:nodeId,outputVideoNodeId:n.id,mediaId:n.mediaId,sceneFps:B.timing.fps,aspect:B.timing.aspect};
       await log({type:'export-candidate',value});return value;
+    }),
+    group:({title})=>exclusive(async()=>{
+      require(last('complete'),'Verify the exported video before delivery grouping');
+      if(last('delivered'))return {stage:'delivered',...last('delivered').result};
+      require(typeof title==='string'&&title.trim(),'Group title required');
+      const done=last('complete').result;
+      let intent=last('group-request');
+      if(!intent)intent=await log({type:'group-request',arguments:{canvasId:done.canvasId,nodeIds:[done.source3dNodeId,done.outputVideoNodeId],title,idempotencyKey:`3dref-${runId}-group`}});
+      let receipt=last('group-accepted')?.receipt;
+      if(!receipt){receipt=await read('toonkit_canvas_group_nodes',intent.arguments);require(receipt.mutationId&&receipt.nodeId,'Incomplete group receipt; resume exact request');await log({type:'group-accepted',receipt});}
+      const applied=await read('toonkit_get_canvas_mutation',{mutationId:receipt.mutationId});
+      if(applied.status==='PENDING')return {stage:'group-pending',mutationId:receipt.mutationId};
+      require(applied.status==='APPLIED'&&applied.nodeId===receipt.nodeId,'Group mutation failed/conflicted: '+JSON.stringify(applied));
+      const result={...done,groupNodeId:receipt.nodeId};await log({type:'delivered',result});return {stage:'delivered',...result};
     }),
     confirmExport:(metadata)=>exclusive(async()=>{
       if(last('complete'))return last('complete').result;
@@ -271,11 +302,11 @@
     if(last('complete'))return {stage:'complete',...last('complete').result};
     require(evidence?.ticketId===runId,'Export evidence/ticket mismatch');
     // Never query canvas while UI says rendering or metadata is not ready.
-    if(evidence.stage!=='metadata-ready')return {stage:'export-pending',reason:evidence.stage};
-    require(Array.isArray(evidence.videos)&&evidence.videos.length>0,'Missing decoded output metadata');
+    if(!['metadata-ready','render-complete','metadata-pending'].includes(evidence.stage))return {stage:'export-pending',reason:evidence.stage};
+    require(Array.isArray(evidence.videos),'Missing output observation');
     const candidate=await api.collectExport();if(candidate.stage)return candidate;
     const matching=evidence.videos.filter(v=>v.outputVideoNodeId===candidate.outputVideoNodeId);
-    if(!matching.length)return {stage:'metadata-pending',outputVideoNodeId:candidate.outputVideoNodeId};
+    if(!matching.length)return {stage:'metadata-pending',outputVideoNodeId:candidate.outputVideoNodeId,ticket:{ticketId:runId,source3dNodeId:candidate.source3dNodeId,outputVideoNodeId:candidate.outputVideoNodeId,baselineVideoIds:last('export-baseline').videoIds,allowClick:false}};
     require(matching.length===1,'Ambiguous DOM video metadata');
     return {stage:'complete',...await api.confirmExport(matching[0])};
   };

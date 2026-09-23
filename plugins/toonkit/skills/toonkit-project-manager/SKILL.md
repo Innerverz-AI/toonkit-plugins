@@ -19,6 +19,10 @@ A previz exported as MP4 is still deterministic, not AI-video generation. Do not
 
 In mixed pipelines, load AI rules for actual AI stages; do not reread unchanged SSOT on entry/exit from previz. Select previz only when specified or when particular shots need precise spatial/action/camera reference, not every shot. If explicitly required but unavailable, report the prerequisite instead of silently skipping.
 
+## Scope a location reference
+
+For 3Dref, “faithful to the location sheet” means preserving shot-relevant positions, distances, height relationships and interaction surfaces using simple proxies. Plan the actors and camera first, then construct only the needed part of the camera's swept view. Do not rebuild the city panorama, visual style or decorative details. The 3dref common numerical preflight is mandatory for all supported actor counts through the one production compiler. Save/Export success alone is not proof that the planned beats, slowmo or camera roll were implemented.
+
 ## Connection
 
 Toonkit tool names may carry a client-specific prefix; use the connected tool whose name ends with the documented name. If the tools or the generation guide are unavailable, explain the connection problem and help the user authenticate or reconnect. Do not guess generation arguments or submit paid work meanwhile. Never include OAuth tokens or other credentials in output.
@@ -28,7 +32,7 @@ Toonkit tool names may carry a client-specific prefix; use the connected tool wh
 - Scene/canvas authoring and generation use MCP. Only 3dref permits scoped visible timeline, navigation, Save and Export; never UI scene authoring or general canvas manipulation.
 - Paid work requires the AI workflow's live quote, confirmation and idempotency/recovery rules. Previz authorization does not authorize AI motion purchases or R2V.
 - Keep payloads in orchestration memory; emit compact summaries. Reuse unchanged schemas/guides/references. Do not load both structured and serialized copies.
-- Use the packaged 3D compiler/runtime (or its direct-route step helper) for supported fresh scenes. It owns connection, journaling, application waits and one export transaction. Do not recreate adapters, transfer/readback scripts or per-batch files.
+- Use the packaged 3D compiler/runtime (or its portable relay over the same bridge) for supported fresh scenes. It owns connection, journaling, application waits and one export transaction. Do not recreate adapters, transfer/readback scripts or per-batch files.
 - Preserve user work. Remove only confidently identified slop this run created when within scope, never prior results/caches for cosmetic tidiness.
 
 ## AI-only authority

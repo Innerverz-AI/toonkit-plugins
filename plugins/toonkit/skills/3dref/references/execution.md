@@ -1,34 +1,38 @@
-# Execution: compile → visible MCP authoring → one export
+# Production execution
 
-Read once per task. This route creates a fresh, owned stock-human/camera scene. Existing scenes, multiple animated actors or imported rigs require scoped MCP work under the body/direction/contract references; never relax fresh-scene guards to fit them.
+One compiler and bridge handle one or many actors. Use a fresh scene on a new or existing canvas; preserve earlier nodes. Existing-scene patching, imported rigs and unprofiled geometry are outside this release. Do not replace a failed guard with handwritten MCP batches.
 
-## 1. Compile the user's direction
+## Prepare once
 
-Resolve this skill's absolute installation path, a new writable run directory and reusable cache. Do not use an old project, sample scene, session history or test result. Python 3.9+ is sufficient for native motion. Compound stock motion additionally requires Node 20+ and three@0.184.0; install only when absent, within a writable cache:
+Resolve the skill's absolute path, a writable run directory and reusable dependency/source cache. Requirements: Python 3.9+, Node 20+, `three@0.184.0`, authenticated ToonKit MCP and a visible logged-in browser. The portable relay below uses the same Python/Node requirements. No prior project or session state is needed.
+
+Install the pinned dependency only if absent, locally:
 
 `npm install --prefix <cache>/runtime --cache <cache>/npm --ignore-scripts --no-audit --no-fund three@0.184.0`
 
-Write the user-specific `spec.json` directly in an otherwise empty run directory. Required format: `3dref-production-v1`; required `shot`: the grammar in [direction](direction.md); optional `actorName`, `actorColor`, `objects`. Declare either `nativePreset` or a complete `motion` block from [body motion](body-motion.md). No named recipes or fallback running animation. Objects use `object.add` with full array transforms and unique clientRef; optional color immediately follows its declaration. Do not store per-frame arrays in the spec.
+Write `spec.json` using [production input](production-input.md), then:
 
-`python3 <skill>/scripts/compiler.py <run>/spec.json --run <run>`
+`python3 -B <skill>/scripts/compiler.py <run>/spec.json --run <run> --runtime <cache>/runtime --cache <cache>/motions`
 
-For compound motion add `--runtime <cache>/runtime --cache <cache>/motions`; add `--offline` when cached. The compiler accepts a run containing only its own input spec; it refuses other existing run data. It produces only `spec.json`, immutable `compiled.json` and `journal.jsonl`. Review its compact summary. No separate motion/trajectory/batch/receipt artifacts. Compilation is not a remote mutation or rendered validation.
+First use fetches only required checksum-pinned public FBX assets. Subsequent uses may add `--offline`. Network permission/login are environment prerequisites, not hidden skill dependencies. Never copy old shot calculations into a new spec.
 
-## 2. Connect once; retain memory
+A passing run has exactly `spec.json`, `compiled.json`, `journal.jsonl`. A failed plan has `spec.json` and `diagnostic.json`; fix that input and recompile in the same failed run. No scene write occurs on failure. After compilation, the bundle/journal are immutable to the planner: changed intent needs a new run. Keep diagnostics local; read only the failing constraint's evidence, not frame arrays.
 
-Discover names/declarations of the six canvas/3D tools required by runtime.js. No AI-generation catalogs, balance, SSOT or OAuth extraction. If multiple ToonKit connections qualify, select the intended observed prefix explicitly.
+## Connect once
 
-Load the launcher once into `functions` memory, without emitting its source. Substitute resolved absolute paths, not literal placeholders:
+Discover the eight suffixes used by `runtime.js` from the connected tools. Select an observed prefix when several connections qualify. No AI catalogs, balance, SSOT or generation guide for this deterministic route. Hosts with tool-memory orchestration use this launcher; hosts without it use [portable relay](direct.md).
+
+Load the launcher into memory without printing its source. Substitute resolved absolute paths and the actual prefix:
 
 ```js
-const paths={skill:RESOLVED_SKILL_PATH,runDir:RESOLVED_RUN_PATH};
+const paths={skill:SKILL_PATH,runDir:RUN_PATH,prefix:OBSERVED_PREFIX};
 const q=s=>"'"+s.replaceAll("'","'\\''")+"'";
 const r=await tools.exec_command({cmd:'cat '+q(paths.skill+'/scripts/runtime.js'),max_output_tokens:12000});
 if(r.exit_code!==0)throw Error(r.output);
 store('3dref-launcher',r.output);store('3dref-paths',paths);
 ```
 
-Each following execution cell uses this same short invocation; change only phase/arguments:
+Every phase then uses the same invocation, changing only phase/arguments:
 
 ```js
 text(await eval(load('3dref-launcher'))({tools,load,store,
@@ -36,43 +40,44 @@ text(await eval(load('3dref-launcher'))({tools,load,store,
   load('3dref-paths'),PHASE,ARGUMENTS));
 ```
 
-The launcher loads bundle/bridge/browser helper once, selects connected tool names, starts one lightweight Python journal worker, and retains state. Large payloads stay in tool memory; output summaries only. Do not rebuild an adapter, read helper internals or reread files each batch. The worker uses an exclusive journal lock, fsync before request ACK, and coalesces prior receipts with the next request. A lost response replays the original request/key; accepted writes are never blindly duplicated.
+The launcher owns connection binding, one locked journal worker, batching, ID resolution, revision/application barriers and readback. Keep payloads in memory; don't recreate adapters or print helper source/keys. Fsync the exact request before sending. Transport uncertainty replays the same idempotency key and request; a rejection/conflict does not get a fresh key.
 
-## 3. Show and author
+## Author with the editor visible
 
-Read the connected browser tool's current API once. Reuse a suitable logged-in ToonKit tab, respecting explicit user selection; otherwise create a visible tab. Do not replace unrelated work. Browser access/login are required; never switch to UI authoring or a substitute renderer.
+Read the browser tool's current API once. Reuse a suitable ToonKit tab while respecting explicit browser selection. Do not navigate unrelated work away.
 
-| Runtime phase | Action / gate |
+| Phase | Arguments and prerequisite |
 |---|---|
-| `createProject`, `{name}` | Validate live catalog once; create and return actual project URL. |
-| Browser navigation | Show that URL; do not reload a matching page. |
-| `createScene`, `{name,projectVisible:true}` | Requires the project actually visible. Creates human_camera and returns exact node/actor/camera IDs. |
-| Browser navigation | Open that exact node by observed ID or unique name/control. Keep viewport and frame/key timeline visible. An open-existing control may be labelled Create 3D Reference. Ground Export's current accessible label. |
-| `advance`, `{editorVisible:true}` | Requires that exact editor actually visible. Dispatch ordered MCP batches for at most 45 s, then full saved verification and export preparation in the same phase. |
+| `useProject` | `{canvasId,url}` from the current observed canvas; binds and reads it. Or `createProject` with `{name}` when a new canvas is requested. |
+| Browser | Show the bound/returned URL. |
+| `createScene` | `{name,projectVisible:true}` only after the actual project is visible. Returns the owned scene ID. |
+| Browser | Open that exact scene editor and show its timeline. Read loaded script filenames from the public DOM once; compare to `engine-profile.json.requiredAssetNames`. |
+| `advance` | `{editorVisible:true,engineAssetNames:[observed names]}`. At most 45s of dispatch/application work per window. Repeat only for pending progress. |
 
-Repeat advance only while dispatch/application is pending, retaining memory and providing user updates between bounded windows. No per-batch model turns. The bridge learns application latency, pre-waits briefly for known pending writes, and backs off only while needed; it still reads a fresh saved revision before every new write. Conflict, unexpected sequence, normalization, rejection or changed limits stop the run. No automatic rebasing onto others' edits.
+Before every new batch the bridge obtains a fresh signed logical revision and waits for all accepted work to materialize. Header-only reads keep payloads small; the initial template and final scene get full verification. Never apply over a changed sequence, normalization conflict, incompatible catalog, unknown actor or changed profile. A changed public asset filename means this release needs profile revalidation; production must not guess compatibility.
 
-All root/camera keys precede action overlays; no playback/export between passes. Saved verification checks counts, numeric fields, inherited poses, source slot and actor scale. Scene timing is admitted-request evidence where omitted by the safe view; actual exported duration is checked separately. No screenshot/contact-sheet/pixel QA.
+All transform/camera keys for all actors precede pose overlays. No playback or Export between these passes. Final readback compares every emitted numeric field/key and inherited-pose state, with the safe view's 0.001 rounding tolerance. This proves saved fidelity, not pixels or art direction.
 
-## 4. Single export transaction
+## Export and delivery
 
-`advance` finishes with `export-ready`, verification summary and a durable ticket containing pre-existing output IDs. Include `browser:{tabVariable,controls:{editorNodeId,exportLabel,ready:true}}` in advance to receive the ready-to-run browser action in that same response. These fields must come from the actual visible editor, not guesses. `ready:true` means the exact editor has been observed, requested timing/FPS are not contradicted, assets are ready and Save is clean. If Save is needed for this run's changes, perform it through the normal UI and observe the updated state first; unexpected dirty user changes stop export.
+The browser action below uses Codex's browser API. Portable hosts use the [host-native browser handoff](direct.md#visible-browser-export-on-claude-code) and the same `finishExport`/`group` bridge phases.
 
-If readiness requires a separate UI check after authoring, perform that narrow check once, then request `browserCode` with the same browser arguments. This exceptional handoff is preferable to pretending readiness. The runtime emits only the small browser action, never motion arrays.
+`advance` returns `export-ready`, saved verification and a durable export ticket. Observe the exact editor once: expected actor names and frame count, assets ready, Save clean, uniquely enabled Export. The UI total is N frames; the last key is frame N−1. If a stale editor still shows its initial timing/objects, reopen that scene from the saved canvas through normal UI. Do not Save stale data over the verified scene. Resolve only owned dirty changes.
 
-1. Execute the emitted action unchanged through `cua_repl`, using the existing tab handle and tool `timeout_ms:55000` (the default 30 s is shorter than this bounded wait). It clicks the observed uniquely enabled Export once, reads fresh UI state without emitting its full tree, waits up to 40 s for Export to return, and collects actual DOM video metadata. Keep the render visible. No hidden store, internal renderer, network export endpoint, Play click or screenshots.
-2. Pass its compact evidence directly to `finishExport`. Only decode-ready evidence triggers one canvas read; the runtime matches a new materialized source-linked video and its DOM node identity, duration, intrinsic dimensions, readyState and error. It journals completion and closes the worker. No get_media lookup, download, FFmpeg probe or second verification loop.
+Request `browserCode` with `{tabVariable,controls:{editorNodeId,exportLabel,saveLabel}}`, using observed values. The same `browser` object can be included in `advance` when readiness is already known. Execute the emitted browser action unchanged with a 55s tool timeout. The helper checks public DOM readiness, journals the ticket, clicks Export once per issued attempt, waits up to 40s, and reads output-video metadata. It excludes the short preview embedded in a 3D node.
 
-Thus the normal path after preparation has two tool handoffs: browser action and finishExport. This is a structural budget, not a promise that rendering always finishes within one window. Transporting the small browser action through model context is deliberate because browser tools and orchestration memory are separate surfaces.
+Pass its compact result to `finishExport`. Only when rendering has ended does the bridge read canvas outputs, identify the unique new source-linked video, and match its exact DOM node. It checks decoded duration, dimensions/aspect, readyState and error. No media download, private renderer/store, network export endpoint, `get_media` loop or substitute renderer.
 
-If rendering exceeds a window, leave the tab open and resume only the existing ticket (allowClick:false). Do not query MCP while UI is rendering. For a dialog, error, missing DOM video or metadata-pending result, make one targeted observation/recheck after meaningful progress. Never loop full AX trees, media queries or re-export to check status. Typically stop after two minutes of stalled scene application or five minutes of stalled export; preserve work and report the concrete state. Metadata/identity ambiguity is partial verification, not success.
+If the output is offscreen/unmounted, `finishExport` returns `metadata-pending` and its exact output ID. Focus that known video using the normal visible canvas UI once; request `browserCode` again (click disabled) and `finishExport` with its metadata. A normal media Play is allowed if decoding requires it. Do not use the 3D preview, a different video or another Export as evidence. If rendering is still active, resume only the existing ticket; no MCP polling during frame capture. Keep the tab visible.
 
-The ticket is issued durably before emitting click code. If interrupted before/around the click, a cold restart intentionally disables automatic clicking: inspect existing output/progress and ask for a narrow retry decision only if whether a click occurred cannot be established. No inferred success and no blind duplicate export.
+For a standalone result, call `group` with `{title}` after `complete`. It journals one source/output group and checks its mutation. Repeat only `group` while `group-pending`; never regroup with a new key. `delivered` closes the worker. In a larger coordinated request, call `close` and return source/output IDs for its one final group instead.
 
-## Recovery and delivery
+Return the canvas link, actual video duration/dimensions, scene FPS, and a concise verified/unverified scope. Expose the playable video in the user's browser. Do not claim encoded FPS, visual acceptance or R2V compatibility from metadata alone.
 
-Runtime `close` stops its healthy worker without altering the scene; resume from the same run. `recover` terminates only this run's retained worker after an uncertain ACK, then a subsequent phase reloads the durable journal. If a forcibly cancelled call left busy state, use recover with `confirmedStopped:true` only after confirming that the prior execution cell ended; never interrupt a still-running writer to evade the guard. If tool memory was lost, reconnect to the known worker session/close it if possible; the journal lock must be released before launching another writer. Never remove the lock/journal or guess a process to kill. New content needs a new run.
+## Recovery and bounded stopping
 
-If this run is the whole user request, group its nodes after `finishExport` has closed the worker: `python3 <skill>/scripts/direct.py <run> request group --title <title>` prints the `toonkit_canvas_group_nodes` request with this run's key; call it, record the receipt with `direct.py <run> accept group '<receipt>'` and follow its mutation. If a coordinating workflow selected this shot, return the source and output node IDs for its single final group instead.
+`close` stops a healthy worker without changing the scene. `recover` stops only the known retained worker after an uncertain ACK; then reload from the same journal. Use `confirmedStopped:true` only if a previously cancelled execution cell has actually ended. Lost tool memory is recoverable from disk, but release the previous worker's lock first; never delete locks or guess a process to kill.
 
-Keep the delivered result tab visible and mark it as deliverable with the current API. Return the project link, source/output/media IDs and brief verified/unverified scope. Report actual video duration/dimensions and scene FPS, not unmeasured encoded FPS. A playable previz is not certified R2V input; validate that contract only when an AI stage is requested.
+Cold restart intentionally disables an automatic second Export after a ticket was issued. Inspect existing progress/output. Ask for a retry decision only when whether a click happened remains ambiguous; elapsed time is not authorization.
+
+After two minutes without scene-application progress or five minutes without export progress, stop automatic work and report the concrete pending state. Preserve the run. Small object count/video size does not identify the cause of delay; only attribute application, frame capture, encoding or materialization latency when the evidence distinguishes it. Keep user updates between bounded windows. Do not run screenshot/contact-sheet verification loops.

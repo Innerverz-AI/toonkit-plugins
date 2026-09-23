@@ -3,6 +3,7 @@
  * Node 20+, task-local three@0.184.0. Files and optional public asset fetches only.
  */
 import fs from 'node:fs/promises';
+import {timeWarp} from './timewarp.mjs';
 import path from 'node:path';
 import {pathToFileURL, fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
@@ -31,16 +32,17 @@ export async function compile(spec,{runtime,cache,offline=false}) {
   const frames=Math.round(fps*duration);
   if(![12,15,24,30,60].includes(fps)||duration<2||duration>30||Math.abs(frames-fps*duration)>1e-8)throw Error('Unsupported timing');
   if(spec.rig!=='stock-human'||!['standing-idle','running','walking','idle'].includes(spec.baseline))throw Error('Unsupported stock-human baseline');
+  const warp=timeWarp(spec.timeWarp,duration);
   const nativeBaseline=spec.baseline!=='standing-idle';
   if(!Array.isArray(spec.segments)||!spec.segments.length)throw Error('At least one segment is required');
   const segments=spec.segments.map(s=>({...s}));
   for(let i=0;i<segments.length;i++) {
     const s=segments[i];
-    if(!MOVING.includes(s.preset)&&!STILL.includes(s.preset))throw Error(`Unknown preset ${s.preset}`);
+    if(!HASHES[s.preset]||s.preset==='human')throw Error(`Unverified preset ${s.preset}; this release supports standing-idle, idle, running, walking and jumping`);
     for(const k of ['start','end','sourceStart','speed'])finite(s[k],`${i}.${k}`);
     if(s.start<0||s.end<=s.start||s.sourceStart<0||s.speed<=0||s.end>duration+1e-8||typeof s.loop!=='boolean')throw Error(`Invalid segment ${i}`);
     if(s.phaseLock!==undefined&&typeof s.phaseLock!=='boolean')throw Error('phaseLock must be a boolean');
-    if(s.phaseLock && (!nativeBaseline||s.preset!==spec.baseline||s.speed!==1||s.sourceStart!==0||!s.loop))throw Error('phaseLock requires the native baseline preset, speed 1, sourceStart 0 and loop true');
+    if(s.phaseLock && (!warp.identity||!nativeBaseline||s.preset!==spec.baseline||s.speed!==1||s.sourceStart!==0||!s.loop))throw Error('phaseLock requires the native baseline preset, speed 1, sourceStart 0 and loop true');
     if(i&&s.start<=segments[i-1].start)throw Error('Segments must be ordered by distinct start times');
     if(i&&s.start>segments[i-1].end+1e-8)throw Error('Body timeline has a gap');
     if(i&&s.end<=segments[i-1].end)throw Error('Nested/non-progressing segments are unsupported');
@@ -110,11 +112,11 @@ export async function compile(spec,{runtime,cache,offline=false}) {
     }
     // Same named bones alone do not establish compatible rest orientation.
     for(const b of Object.values(JOINTS))if(model.rest.get(b.toLowerCase()).angleTo(baseline.rest.get(b.toLowerCase()))>.015)throw Error(`${s.preset}: incompatible rest rig`);
-    const endTime=s.sourceStart+(s.end-s.start)*s.speed;
-    if(!STILL.includes(s.preset)&&!s.loop&&endTime>model.clip.duration+1e-5)throw Error(`${s.preset}: non-loop clip overrun; shorten segment or choose explicit slower speed`);
+    const endTime=s.sourceStart+(warp.at(s.end).time-warp.at(s.start).time)*s.speed;
+    if(!STILL.includes(s.preset)&&!s.loop&&endTime>model.clip.duration+1e-5)throw Error(`${s.preset}: source end ${endTime.toFixed(4)}s exceeds non-loop clip ${model.clip.duration.toFixed(4)}s; shorten segment or choose explicit slower speed`);
     if(s.preset==='jumping'&&s.loop)throw Error('Jump events must be non-looping; schedule each jump explicitly');
   }
-  function at(s,t){if(s.phaseLock)return baseAt(t);if(STILL.includes(s.preset))return sample(s._model,0);let u=s.sourceStart+(t-s.start)*s.speed;const d=s._model.clip.duration;if(s.loop)u=((u%d)+d)%d;else u=Math.max(0,Math.min(u,d));return sample(s._model,u)}
+  function at(s,t){if(s.phaseLock)return baseAt(t);if(STILL.includes(s.preset))return sample(s._model,0);let u=s.sourceStart+(warp.at(t).time-warp.at(s.start).time)*s.speed;const d=s._model.clip.duration;if(s.loop)u=((u%d)+d)%d;else u=Math.max(0,Math.min(u,d));return sample(s._model,u)}
   const output=[],previous={};let maxError=0,maxJump=0,maxCorrection=0;
   for(let frame=0;frame<frames;frame++) {
     const t=frame/fps;
@@ -122,11 +124,11 @@ export async function compile(spec,{runtime,cache,offline=false}) {
     const active=segments.filter(s=>s.start<=t+1e-9&&t<s.end-1e-9);
     if(!active.length&&Math.abs(t-segments.at(-1).end)<1e-8)active.push(segments.at(-1));
     if(active.length<1||active.length>2)throw Error(`Frame ${frame}: ambiguous body coverage`);
-    let target=at(active[0],t);
+    let target=at(active[0],t), blendWeight=0;
     if(active.length===2){
       const [a,b]=active, span=a.end-b.start;
       if(!(span>0))throw Error('Invalid transition overlap');
-      const w=smooth(Math.max(0,Math.min(1,(t-b.start)/span))), next=at(b,t);
+      const w=smooth(Math.max(0,Math.min(1,(t-b.start)/span))), next=at(b,t);blendWeight=w;
       target={quats:Object.fromEntries(Object.keys(JOINTS).map(j=>[j,target.quats[j].clone().slerp(next.quats[j],w)])),hipY:target.hipY+(next.hipY-target.hipY)*w};
     }
     const pose={};
@@ -150,10 +152,15 @@ export async function compile(spec,{runtime,cache,offline=false}) {
     human.group.updateMatrixWorld(true);
     const markers=Object.fromEntries(['legR','legL','footR','footL','toeR','toeL','handR','handL','head'].map(id=>{
       const p=human.bones.get(JOINTS[id].toLowerCase()).getWorldPosition(new T.Vector3());
-      // Markers already include source hip motion; add only horizontal/planned ground root later.
+      // Object transform owns rootYOffset. Remove it here to avoid counting
+      // source hip height twice when markers are transformed by that object.
+      p.y-=rootYOffset;
       return [id,p.toArray().map(rounded)];
     }));
-    output.push({frame,pose,rootYOffset:rounded(rootYOffset),markers});
+    const gait=active.every(s=>['running','walking'].includes(s.preset));
+    const expected=s=>(provenance.find(p=>p.preset===s.preset).sourceAverageSpeedMps||0)*s.speed;
+    const sourceSpeedMps=gait?(expected(active[0])*(1-blendWeight)+(active[1]?expected(active[1])*blendWeight:0))*warp.at(t).speed:null;
+    output.push({frame,actionTime:warp.at(t).time,actionRate:warp.at(t).speed,activePresets:active.map(s=>s.preset),sourceSpeedMps,pose,rootYOffset:rounded(rootYOffset),markers});
   }
   if(maxError>.001)throw Error(`Pose roundtrip error ${maxError} degrees`);
   const warnings=['Bone markers are not skin/sole collision bounds; no physical IK or rendered QA.',
@@ -161,7 +168,7 @@ export async function compile(spec,{runtime,cache,offline=false}) {
   if(maxJump>45)warnings.push(`Large adjacent Euler step (${maxJump.toFixed(2)} deg); use dense keys and review transition/source phase numerically.`);
   if(maxCorrection>90)warnings.push('Some exact local corrections exceed UI slider bounds; do not clamp. Confirm current MCP acceptance or use a compatible motion asset.');
   return {format:'3dref-body-v1',profile:nativeBaseline?'stock-human-native-v1':'stock-human-standing-v1',baseline:spec.baseline,requiresFreshActor:true,
-    durationSeconds:duration,fps,rootHeightOwner:'body',sources:provenance,
+    durationSeconds:duration,fps,timeWarp:warp.rows,rootHeightOwner:'body',markerSpace:'object-local-after-root-offset',sources:provenance,
     summary:{frames,maxRoundtripDegrees:maxError,maxAdjacentChannelDegrees:maxJump,maxAbsoluteChannelDegrees:maxCorrection,normalizationScale:scale,warnings},samples:output};
 }
 
