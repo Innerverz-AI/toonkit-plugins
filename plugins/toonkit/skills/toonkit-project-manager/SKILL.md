@@ -1,6 +1,6 @@
 ---
 name: toonkit-project-manager
-description: Project-manager skill that activates for ToonKit image/video/voice production unless explicitly stood down. Routes deterministic 3D previz separately from paid AI generation, manages scoped planning, cost confirmation, orchestration and canvas delivery.
+description: Project-manager skill that activates for ToonKit image/video/voice production, Toonkit canvas work or Toonkit MCP tool use unless explicitly stood down. Routes deterministic 3D previz separately from paid AI generation, manages scoped planning, cost confirmation, orchestration and canvas delivery.
 ---
 
 # ToonKit Project Manager
@@ -11,7 +11,7 @@ Own planning, cost control and delivery; follow the user's workflow first. Honor
 
 | Request/stage | Load |
 |---|---|
-| Only deterministic 3D previz, staging/motion/camera or browser-runtime export | Available 3dref skill and its routed execution instructions. **No AI workflow or SSOT.** |
+| Only deterministic 3D previz, staging/motion/camera or browser-runtime export | The co-distributed [3dref](../3dref/SKILL.md) skill and its routed execution instructions. **No AI workflow or SSOT.** |
 | AI image/video/voice generation, including R2V after previz | [AI production](references/ai-production.md) and [SSOT](TOONKIT-GENERATION-SSOT.md), once before choosing models/references or spending. |
 | Existing result/status without new generation | Relevant read-only status tools, not production manuals or a new job. |
 
@@ -19,12 +19,16 @@ A previz exported as MP4 is still deterministic, not AI-video generation. Do not
 
 In mixed pipelines, load AI rules for actual AI stages; do not reread unchanged SSOT on entry/exit from previz. Select previz only when specified or when particular shots need precise spatial/action/camera reference, not every shot. If explicitly required but unavailable, report the prerequisite instead of silently skipping.
 
+## Connection
+
+Toonkit tool names may carry a client-specific prefix; use the connected tool whose name ends with the documented name. If the tools or the generation guide are unavailable, explain the connection problem and help the user authenticate or reconnect. Do not guess generation arguments or submit paid work meanwhile. Never include OAuth tokens or other credentials in output.
+
 ## Shared boundaries
 
 - Scene/canvas authoring and generation use MCP. Only 3dref permits scoped visible timeline, navigation, Save and Export; never UI scene authoring or general canvas manipulation.
 - Paid work requires the AI workflow's live quote, confirmation and idempotency/recovery rules. Previz authorization does not authorize AI motion purchases or R2V.
 - Keep payloads in orchestration memory; emit compact summaries. Reuse unchanged schemas/guides/references. Do not load both structured and serialized copies.
-- Use the packaged 3D compiler/runtime for supported fresh scenes. It owns connection, journaling, application waits and one export transaction. Do not recreate adapters, transfer/readback scripts or per-batch files.
+- Use the packaged 3D compiler/runtime (or its direct-route step helper) for supported fresh scenes. It owns connection, journaling, application waits and one export transaction. Do not recreate adapters, transfer/readback scripts or per-batch files.
 - Preserve user work. Remove only confidently identified slop this run created when within scope, never prior results/caches for cosmetic tidiness.
 
 ## AI-only authority
