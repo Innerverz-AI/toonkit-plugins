@@ -3,7 +3,7 @@
 **English** | [한국어](README.ko.md)
 
 Generate images and videos and work with Toonkit canvases from **Codex** or
-**Claude Code**. This plugin bundles a shared skill with an authenticated MCP
+**Claude Code**. This plugin bundles two shared skills with an authenticated MCP
 connection to Toonkit. No local MCP server is required.
 
 This is an initial plugin package. Manifests and the skill have passed static
@@ -17,8 +17,22 @@ verification. The plugin is not listed in an official plugin directory.
   [connection settings](https://toonkit.io/en/settings/connections).
 - Available credits for paid generation. You can set spending limits in connection settings.
 
+For `3dref` previz additionally:
+
+- Python 3.9+ and a visible, logged-in browser the client can control
+  (Codex's browser tool; in Claude Code, [Claude in Chrome](https://code.claude.com/docs/en/chrome)).
+- Node 20+ for composed stock-human motion. The skill installs the pinned
+  `three@0.184.0` into a writable cache on first use.
+
 Installing the plugin and authorizing your Toonkit account are separate steps.
 Do not put passwords or access tokens in the plugin files.
+
+## Skills
+
+| Skill | Use |
+|---|---|
+| `toonkit-project-manager` | Activates for Toonkit image, video and voice work. Plans the production, quotes credits before paid work, runs generations and delivers on a canvas. |
+| `3dref` | 3D previz: authors a Toonkit 3D Reference scene (staging, motion, camera) over MCP and exports a reference video through the visible editor. Use it only on explicit request (Codex `$3dref`, Claude Code `/toonkit:3dref`). |
 
 ## Install
 
@@ -54,9 +68,11 @@ connection, and authenticate.
 - “Create an image of a rainy Tokyo alley with Toonkit.”
 - “Check the image models and options available for this Toonkit canvas.”
 - “Estimate the credits needed to turn this image into a video.”
+- “Use 3dref: a 6-second 16:9 previz of a character walking toward a slowly pulling-back camera.”
 
-The skill starts by reading `toonkit_get_generation_guide` from the server.
-Model catalogs, prices, and detailed generation rules are maintained by Toonkit.
+The project-manager skill reads `toonkit_get_generation_guide` from the server
+before generating. Model catalogs, prices and detailed generation rules are
+maintained by Toonkit; the bundled guidance carries judgment rules only.
 
 ## Repository layout
 
@@ -66,15 +82,25 @@ Model catalogs, prices, and detailed generation rules are maintained by Toonkit.
 plugins/toonkit/
   .codex-plugin/plugin.json            Codex manifest + MCP configuration
   .claude-plugin/plugin.json           Claude Code manifest + MCP configuration
-  skills/toonkit-generation/SKILL.md    Shared skill
+  skills/toonkit-project-manager/      Production planning, cost gates, AI generation
+  skills/3dref/                        3D previz authoring and export
 ```
 
-Both clients install the same plugin directory and share one skill. Each manifest
+Both clients install the same plugin directory and share the same skills. Each manifest
 includes its own `mcpServers` configuration pointing at `https://toonkit.io/mcp`.
 Neither sets an OAuth client ID: Toonkit supports
 [Client ID Metadata Documents](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#client-id-metadata-documents)
 (CIMD), so Codex and Claude Code identify themselves with their own published
 metadata document and no registration step is needed.
+
+`3dref` has two execution routes over the same compiler and run journal. Codex
+uses a packaged runtime that keeps payloads in its tool memory. Claude Code, and
+other hosts whose model calls MCP tools one at a time, use `scripts/direct.py` to
+relay each request. On that route every batch passes through the model context,
+so long or body-baked shots cost noticeably more tokens. Codex's
+`agents/openai.yaml` disables implicit invocation of `3dref`. Claude Code has no
+equivalent that Codex's plugin validator accepts, so there the skill description
+alone limits it to explicit requests.
 
 If you previously connected with a fixed client ID (`toonkit-codex` or
 `toonkit-claude-code`), that connection keeps working. Authenticating through the
@@ -87,6 +113,9 @@ plugin creates a separate connection; disconnect the old one in
 - Shared skill loading and generation guide retrieval.
 - Migration from an existing manually configured MCP connection without duplicates.
 - Paid generation and result retrieval using an explicitly authorized account and budget.
+- `3dref` end to end on both routes: live catalog check, scene authoring, editor
+  Export and output correlation. The Claude Code route is covered only by offline
+  tests against mocked responses so far.
 
 ## Local development
 
