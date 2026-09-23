@@ -51,15 +51,15 @@ codex plugin add toonkit@toonkit
 
 ### Claude Code
 
-Claude Code 안에서 실행합니다.
+터미널에서 실행합니다.
 
-```text
-/plugin marketplace add Innerverz-AI/toonkit-plugins
-/plugin install toonkit@toonkit
+```sh
+claude plugin marketplace add Innerverz-AI/toonkit-plugins
+claude plugin install toonkit@toonkit --scope user
 ```
 
-여러 프로젝트에서 사용하려면 User 범위를 선택합니다. 설치 안내에 따라 다시 로드하거나
-새 세션을 시작한 뒤 `/mcp`에서 Toonkit 연결을 선택해 인증합니다.
+새 Claude Code 세션을 시작한 뒤 `/mcp`에서 Toonkit 연결을 선택해 브라우저에서
+인증합니다. Toonkit 로그인이 필요하면 로그인하고 요청된 권한을 승인합니다.
 
 ## 사용 예
 

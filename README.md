@@ -52,16 +52,16 @@ The plugin registers the connection, so a separate `codex mcp add` is not needed
 
 ### Claude Code
 
-Run inside Claude Code:
+Run in your terminal:
 
-```text
-/plugin marketplace add Innerverz-AI/toonkit-plugins
-/plugin install toonkit@toonkit
+```sh
+claude plugin marketplace add Innerverz-AI/toonkit-plugins
+claude plugin install toonkit@toonkit --scope user
 ```
 
-Choose **User** scope to use the plugin across projects. Follow any reload
-instructions or start a new session, then open `/mcp`, select the Toonkit
-connection, and authenticate.
+Start a new Claude Code session, then open `/mcp`, select the Toonkit connection,
+and authenticate in your browser. Sign in to Toonkit if prompted, then approve
+the requested permissions.
 
 ## Try it
 
