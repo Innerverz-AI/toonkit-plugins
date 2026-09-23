@@ -67,11 +67,14 @@ plugins/toonkit/
   skills/toonkit-generation/SKILL.md    Shared skill
 ```
 
-두 매니페스트는 각자의 `mcpServers`에 MCP 설정을 직접 담습니다. Codex는
-`toonkit-codex`, Claude Code는 `toonkit-claude-code` OAuth 클라이언트 ID를 사용합니다.
-공통 `.mcp.json`은 두지 않습니다. 기본 자동 탐색과 명시적 설정이 합쳐져 다른 클라이언트 ID의 서버가
-등록되는 것을 피하기 위해서입니다. 두 매니페스트 모두 운영 `https://toonkit.io/mcp`에 연결합니다.
-OAuth 클라이언트 ID는 공개 식별자이며 비밀 키가 아닙니다.
+두 매니페스트는 각자의 `mcpServers`에 운영 `https://toonkit.io/mcp` 연결 설정을 담습니다.
+OAuth 클라이언트 ID는 지정하지 않습니다. Toonkit이
+[Client ID Metadata Document](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#client-id-metadata-documents)(CIMD)를
+지원하므로 Codex와 Claude Code가 각자 공개한 메타데이터 문서로 스스로 식별하며, 별도 등록 절차가 없습니다.
+
+이전에 고정 클라이언트 ID(`toonkit-codex`, `toonkit-claude-code`)로 연결했다면 그 연결은 계속 동작합니다.
+플러그인으로 인증하면 별도 연결이 하나 더 생기므로, 필요 없으면
+[연결 설정](https://toonkit.io/en/settings/connections)에서 이전 연결을 해제합니다.
 
 ## 남은 검증
 

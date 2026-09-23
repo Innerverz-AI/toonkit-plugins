@@ -70,10 +70,16 @@ plugins/toonkit/
 ```
 
 Both clients install the same plugin directory and share one skill. Each manifest
-includes its own `mcpServers` configuration: `toonkit-codex` for Codex and
-`toonkit-claude-code` for Claude Code. There is no shared `.mcp.json`, avoiding
-accidental merging of different OAuth client configurations. Both connect to
-`https://toonkit.io/mcp`. OAuth client IDs are public identifiers, not secrets.
+includes its own `mcpServers` configuration pointing at `https://toonkit.io/mcp`.
+Neither sets an OAuth client ID: Toonkit supports
+[Client ID Metadata Documents](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#client-id-metadata-documents)
+(CIMD), so Codex and Claude Code identify themselves with their own published
+metadata document and no registration step is needed.
+
+If you previously connected with a fixed client ID (`toonkit-codex` or
+`toonkit-claude-code`), that connection keeps working. Authenticating through the
+plugin creates a separate connection; disconnect the old one in
+[connection settings](https://toonkit.io/en/settings/connections) if you no longer need it.
 
 ## Verification remaining
 

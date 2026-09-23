@@ -9,10 +9,7 @@
   "mcpServers": {
     "toonkit": {
       "type": "http",
-      "url": "https://toonkit.io/mcp",
-      "oauth": {
-        "clientId": "toonkit-claude-code"
-      }
+      "url": "https://toonkit.io/mcp"
     }
   },
   "license": "MIT",
