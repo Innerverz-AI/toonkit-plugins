@@ -1,6 +1,6 @@
 # AI production — conditional workflow
 
-Read only for an actual AI-generation stage, not deterministic previz. SSOT means [the bundled generation SSOT](../TOONKIT-GENERATION-SSOT.md). Paid confirmation, cost and inspection gates below remain in force.
+Read for planning or executing AI generation, not deterministic previz. SSOT means [the bundled generation SSOT](../TOONKIT-GENERATION-SSOT.md). Paid confirmation, cost and inspection gates below remain in force.
 
 ## 0. Invariants — violations cost real credits and tokens
 
@@ -22,13 +22,15 @@ Read only for an actual AI-generation stage, not deterministic previz. SSOT mean
 - **Delegated choices**: what the user explicitly left to you. Read delegation narrowly — "any character" delegates character design, not the style, references, or pipeline around it. Budget pressure never converts a fixed requirement into a delegated choice: dropping a core reference is a goal change, not a cost tweak — that goes back to the user.
 - **Inspection & cost scope**: how many generations are sanctioned, and who checks what.
 
-If the user did not specify their own workflow, plan the production in this order, **using their instructions verbatim wherever specific enough, supplementing specificity only where absent**:
+For video production without a user-specified workflow, use the sequence below, **preserving specific instructions and supplementing only missing detail**. Image-only or voice-only requests need only their relevant asset/job plan, not a story or scene breakdown:
 
 1. **Secure the story** — what the whole video is about.
 2. **Fix the scenario** — prose at script/treatment level from which the natural flow of events, concrete cut structure, and running time can be imagined by reading alone.
 3. **Fix the length** — honor any stated length; otherwise fit it to the scenario.
 4. **Scene composition** — each scene's events need sufficient plausibility, with duration allocated in proportion to a natural pace. Scene-to-scene links also need plausibility — but do not force continuity across deliberate jumps ("(a year later)", "(meanwhile,)").
 5. **Asset plan** — every image asset needed to realize the full video.
+
+**Select the generation route before reporting or quoting it.** A described art style is a requirement, not a model or preset selection. Preserve explicitly selected models, presets and usable references. For missing image assets, apply SSOT C-1/C-3/C-4 to compare materially suitable routes and recommend one with reasons. Decide asset purposes and quantities from the requested shots; do not default to two images, add sheets to a single-image request, or recreate supplied assets. When asset needs change, reassess affected choices and downstream quotes only; keep unchanged approvals. Resolve new style/preset choices as part of the same plan confirmation, using actual ToonXL samples as specified in C-4.
 
 **Content-risk screening (before any paid call)**: check the brief against SSOT I-11 (real-person likeness, explicit content, real character IP via text or image reference). If failure risk is high, **warn the user in the plan report before spending**, propose lower-risk alternatives where feasible, and let the user decide. Never silently rewrite their creative intent.
 
@@ -40,13 +42,20 @@ If the user did not specify their own workflow, plan the production in this orde
 
 **Budget allocation**: weigh expected quality against remaining credits and daily allowance to fix image/video model tiers and resolutions at planning time. Both "spend on top-tier assets" and "validate cheap, then re-generate high-res" can be correct — state the rationale in the plan.
 
-**Plan report → confirmation gate**: report — image/video job counts; model & resolution choices with rationale; the measured `estimate_credits` total against balance and daily allowance; expected duration; the brief decomposition (fixed vs. delegated); any content-risk warnings; and **every deviation from an SSOT recommendation with its explicit reason** (e.g., a single job beyond the recommended 15–18s requires a stated justification such as a mandatory one-take). Get confirmation, then enter the paid phase. The report itself is enough — a separate saved document is optional.
+**Plan report → confirmation gate (also when planning was not requested)**: before paid work, present one concise table or paragraph covering the relevant items below. Group jobs with identical settings; a single image can use one row. A separate saved document is optional.
+
+- **Deliverables and dependencies:** asset/job purpose and quantity, supplied assets to reuse, references and their roles, generation order; for video, the requested beats, duration, cuts/jobs and output aspect. State fixed user choices and remaining decisions.
+- **Model decisions:** exact model name/variant, applicable style preset, resolution (or model-fixed size), and why each fits the request. Briefly compare materially suitable alternatives when the user has not selected/delegated the route; recommend rather than ask an open-ended model questionnaire. Explicit delegation permits choosing, not omitting the choice and rationale from the report.
+- **Cost basis:** map quoted job counts and settings to the `estimate_credits` amounts, subtotals and total against balance, daily allowance and the user's budget. Show the inputs that affect the quote: model/preset, resolution, duration and references as applicable. Separate optional retries/previews from the requested run. Distinguish live quotes from provisional calculations and unquoted downstream work; references not yet produced cannot support an exact-reference quote. Never invent a measured total or quote with no references while presenting it as the reference-based job's price. Obtain the exact-input quote before each paid call (SSOT G-3).
+- **Readiness:** identify pending choices, unavailable estimates and relevant content-risk warnings; explain deviations from SSOT recommendations (such as a required one-take beyond the recommended job length). Missing downstream facts do not prevent reporting the plan; mark affected work provisional instead of calling it execution-ready.
+
+A plan is reported only when applicable items above are visible to the user; direction, resolution or image count alone is insufficient. For “plan first,” report these before any paid call; plan-only requests end here, and requested approval checkpoints must be honored. Otherwise obtain confirmation only for choices/spend not already authorized, bundling remaining decisions once. Reuse an unchanged approved plan; report and confirm only material changes outside its authorization. Immediately before generating, check that the intended job's model/options/references and quote match the disclosed, authorized scope; surface any missing decision or material change instead of silently substituting it.
 
 ## 2. Main Production — assets → video
 
-1. **Lock the art style (first priority)** — if the user clearly wants a specific style (via reference composition or text), apply it exactly. If not, devise and recommend the style best fitting the scenario and proceed **only after confirmation. Never lock a style unilaterally** — this includes ToonXL `styleId` choices (SSOT C-3/C-4: no name-based curation, confirmation required).
+1. **Apply the planned style** — honor the supplied style/reference and the preset choice resolved during planning. Do not introduce an undisclosed model or style change at execution. If style is unspecified, recommend it in the plan and obtain confirmation unless that choice was explicitly delegated; ToonXL remains subject to C-3/C-4.
 2. **Secure assets (fixed order)**:
-   - If the user already holds usable image assets in ToonKit (`list_assets`), ask about reuse.
+   - Reuse usable assets the user supplied or selected; ask about other existing assets only when the choice matters and was not delegated.
    - If the user uploaded images with the brief, use them via `create_upload` → `confirm_upload` (upload is images-only).
    - Produce whatever is still missing. Model/quality tier follows the budget allocation confirmed in §1; the crafting technique itself is delegated per the role boundary.
    - **Visual inspection gate (all modes, never skipped)**: download each generated asset and confirm with your own eyes that it matches the instruction before it enters video production. An error caught at the cheap image stage costs dozens of times more if caught at the video stage.

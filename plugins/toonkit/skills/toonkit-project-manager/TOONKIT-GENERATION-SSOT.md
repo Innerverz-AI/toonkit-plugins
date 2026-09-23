@@ -115,7 +115,7 @@ GPT family detail (the two 2.5 variants):
 
 - `GPT_IMAGE_2_5_FLARE`: speed/efficiency focus, **optimized for repeated passes.**
 - `GPT_IMAGE_2_5_SUNBURST`: slower, but **superior detailed rendering and element preservation.** Effective for high-quality drafts and quality-critical work like character/location sheets.
-- When the agent chooses a model on its own, prefer **writing a highly specific prompt and finishing in one Sunburst shot** over generating many cheap drafts and spending tokens on verification.
+- When the GPT route fits the request and budget, prefer **a specific prompt and one Sunburst shot** over many cheap drafts and inspection loops. This is not a default over other suitable families or the ToonXL route; explain the route/model choice in the plan.
 - Legacy versions like `GPT_IMAGE_2` (2.0) or `GPT_IMAGE_1_5`: unless the user/agent explicitly targets cost savings, **default to the latest (2.5 family).**
 
 ### C-2. Image model specs (read live)
@@ -148,18 +148,16 @@ ToonXL is ToonKit's in-house-trained **LoRA-family model**. It was trained on an
 
 **Strengths**: locked-in style makes results predictable; in-house checkpoint makes it **among the cheapest** image models (compare live prices); single-asset specialist.
 
-**Ideal pipeline (when the user did not dictate a clear art style/reference)**:
+**Route selection for 2D/cel animation assets**:
 
-1. Left to a generic model like GPT, the output drifts to a bland Ghibli-ish default. To prevent this, **ask the user, or propose the ToonXL style that best fits the scenario and get user confirmation.**
-2. With the confirmed style, produce single-character / single-background / single-prop image assets in ToonXL.
-3. Feed those single assets as references into a GPT model to build **sheets optimized for R2V video generation** (turnarounds, multiple expressions).
-4. Use the processed sheets as video-generation references.
-
-Skipping this order — feeding raw ToonXL single assets straight into video references, or trying to pull scenes/sheets directly out of ToonXL — degrades quality.
+- A textual style request does not select a model or `styleId`. When new single-character, background or prop designs are needed and the route is open, consider **ToonXL single assets → GPT sheets** versus **GPT direct assets/sheets**. Briefly compare suitable routes on style fidelity, reference/detail control and total generations/cost; recommend one in the plan. Do not force this comparison when the user selected the route or supplied usable designs. Other model families remain available when they fit better.
+- ToonXL fits when a reviewed preset matches the intended look. Make the single assets first, then use them as GPT references for the multi-view/expression/location sheets needed by R2V. Do not attempt complex sheets/scenes directly in ToonXL or skip needed sheet preparation merely to save a job.
+- GPT direct fits detailed compositions, precise instructions or existing reference adherence. Explicitly describe the requested style; a style description alone is not grounds to exclude ToonXL from consideration.
+- A single-image deliverable does not require a sheet or video stage. Reuse supplied/approved assets instead of adding a concept pass; add sheets only when the requested downstream use needs them.
 
 ### C-4. ToonXL style list (read live)
 
-Read the current styles and per-style prices from `toonxl`'s `stylesByMode` for the mode you will run; the list is service-managed and changes. **Warning**: never infer purpose from style names. The actual choice is made after reviewing the scenario and style requirements, with user confirmation (C-3).
+Read current styles and per-style prices from `toonxl`'s `stylesByMode` for the mode you will run. To recommend a new preset or ask the user to choose, inspect and show its actual service-provided sample (link it if inline display is unavailable), then explain the fit; never choose by name alone. This means existing samples, not new paid test images. If a sample cannot be obtained, mark that candidate unreviewed and report the remaining plan/alternatives; do not invent a sample, silently substitute a preset or block unrelated work. Confirm a new preset in the plan unless the user explicitly delegated that choice; reuse an explicit prior selection without asking again. Specs/prices still come from the live catalog and quote.
 
 ### C-5. Aspect ratio / resolution judgment rules (image)
 

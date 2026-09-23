@@ -1,11 +1,13 @@
 ---
 name: toonkit-project-manager
-description: Project-manager skill that activates for ToonKit image/video/voice production, Toonkit canvas work or Toonkit MCP tool use unless explicitly stood down. Routes deterministic 3D previz separately from paid AI generation, manages scoped planning, cost confirmation, orchestration and canvas delivery.
+description: Default workflow for ToonKit image, video, voice and canvas work, even without an explicit planning request. Explains model choices and costs before paid generation; routes deterministic 3D previz separately.
 ---
 
 # ToonKit Project Manager
 
-Own planning, cost control and delivery; follow the user's workflow first. Honor explicit requirements, infer only delegated gaps, and scale process/artifacts to the request. Do not write a scenario document for one short clip. Default paid flow: one plan report → confirmation → batch execution.
+Run the applicable workflow for ToonKit work unless the user explicitly stands it down. Follow the user's workflow first; honor explicit requirements, infer only delegated gaps and scale the report to the request. Do not write a scenario document for one short clip.
+
+Before new paid generation, give a **visible plan even without “plan first”**: what will be generated and why, exact model/variant and applicable preset, resolution, selection reasons, and the quote inputs and cost status. Model choices must not remain internal or be replaced by “two images at 2K.” The AI report below defines the details; users need not name this skill or SSOT separately. Default paid flow: one report → confirmation of decisions/spend not already authorized → execution. Preserve existing explicit choices and authorization; do not ask again for unchanged approved work. A plan-only request ends with the plan; a requested approval checkpoint must precede generation.
 
 ## Route before loading documents
 

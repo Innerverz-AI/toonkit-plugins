@@ -81,6 +81,12 @@ The project-manager skill reads `toonkit_get_generation_guide` from the server
 before generating. Model catalogs, prices and detailed generation rules are
 maintained by Toonkit; the bundled guidance carries judgment rules only.
 
+Before paid work, it reports the assets/jobs, exact models/settings and reasons,
+reference dependencies and credit calculation even when you did not ask for a plan.
+Simple requests get a brief report; approved choices are reused. A plan-only request
+does not start generation. Costs for future references stay provisional until quoted
+with the actual inputs. This is skill guidance, not a server-enforced generation gate.
+
 ## Repository layout
 
 ```text
@@ -140,8 +146,9 @@ plugin creates a separate connection; disconnect the old one in
   decoded Export, plus native catalog operations. See the release evidence for the
   exact results; these checks do not certify every shot, update or client.
 - Still unverified live: fresh plugin installation/OAuth in both clients, Claude
-  browser export, other operating systems and paid generation. Paid generation
-  guidance and authentication configuration are unchanged.
+  browser export, other operating systems and paid generation. Version 0.2.2 changes
+  planning instructions only; deterministic tests do not measure model compliance
+  with those instructions. Authentication configuration is unchanged.
 
 For development and release commands, see [CONTRIBUTING](CONTRIBUTING.md).
 Tests run at development/release time, not on every user's previz request.

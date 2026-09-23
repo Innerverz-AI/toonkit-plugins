@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.2 — 2026-09-24
+
+- Make the existing AI plan report explicit before paid generation even without
+  a planning request: asset purposes/counts, exact models/settings and selection
+  reasons, reference dependencies, quote inputs and cost status.
+- Distinguish exact live quotes from provisional downstream costs. Preserve
+  user choices and prior approvals; honor plan-only and approval checkpoints.
+- Align image-route guidance: compare suitable ToonXL-to-GPT and direct GPT
+  routes, show existing ToonXL samples, and avoid unrequested concept/sheet passes.
+  Missing samples or later quotes affect only their dependent work.
+- Scope reports to the request and reassess only changed assets. No changes to
+  3dref, MCP/authentication, marketplaces, tool contracts or runtime code.
+
 ## 0.2.1 — 2026-09-24
 
 - Restore the native MCP route for simple presets, existing-scene edits, catalog
