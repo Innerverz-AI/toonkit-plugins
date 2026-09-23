@@ -1,0 +1,6 @@
+interface:
+  display_name: "3Dref MCP + Live Export"
+  short_description: "MCP authoring with a visible timeline and browser export"
+  default_prompt: "Use $3dref to create a Toonkit 3D previz scene and reference video from the following direction."
+policy:
+  allow_implicit_invocation: false
