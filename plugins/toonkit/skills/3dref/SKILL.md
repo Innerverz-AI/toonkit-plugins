@@ -26,7 +26,7 @@ Require authenticated MCP and a controllable logged-in browser. Python 3.9+ supp
 
 ## Execute
 
-Read [execution](references/execution.md) once. Run packaged helpers without reading their internals into model context. The small emitted browser action is the sole source-transfer exception, required by the separate browser tool surface.
+Choose the route by host. With Codex's retained tool memory (`functions` with exec_command/write_stdin), read [execution](references/execution.md) once. A host whose model calls MCP tools one at a time, such as Claude Code, reads [direct execution](references/direct.md) once instead: same compiler, journal and gates, relayed through the packaged step helper. Run packaged helpers without reading their internals into model context. The small emitted browser action is the sole source-transfer exception, required by the separate browser tool surface.
 
 One user-specific spec → compiler → retained runtime → single export transaction. The runtime owns connection binding, durable recovery, adaptive application waits, saved verification and output correlation. Run the packaged launcher instead of rebuilding adapters. No bundled scenarios, past project IDs, test results or example recipes are production inputs. Emit summaries, never full arrays or both MCP envelope copies.
 
@@ -50,10 +50,10 @@ Read each required document completely once; do not reread unchanged material fo
 - [Direction](references/direction.md): new complex staging, root/camera paths or obstacles.
 - [MCP contract](references/mcp-contract.md): custom operations, revisions or schema changes.
 
-The execution reference includes browser presentation/export; there is no second mandatory browser manual. The compiler is a fast path for fresh stock-human scenes, not a restriction on other MCP features.
+The execution and direct references include browser presentation/export; there is no second mandatory browser manual. The compiler is a fast path for fresh stock-human scenes, not a restriction on other MCP features.
 
 ## Files and delivery
 
-Retain spec.json, compiled.json and journal.jsonl per run; reusable dependency/FBX caches are separate. One compiler process and one persistent journal worker per uninterrupted run. No default body/trajectory/batch/request/receipt/contact-sheet files. Development tests are outside the installation package. Add diagnostics only when needed; never delete prior user files/scenes to claim efficiency.
+Retain spec.json, compiled.json and journal.jsonl per run; reusable dependency/FBX caches are separate. One compiler process per run; the Codex route adds one persistent journal worker per uninterrupted run, the direct route one short helper call per step. No default body/trajectory/batch/request/receipt/contact-sheet files. Development tests are outside the installation package. Add diagnostics only when needed; never delete prior user files/scenes to claim efficiency.
 
 Keep the result visible. Return project link, IDs and concise executed/verified/unverified summary. Record actual duration/dimensions and **scene FPS**, not unmeasured encoded-file FPS. A playable export does not certify R2V acceptance; validate that reference through the actual generation contract/estimate only in a requested R2V stage.
