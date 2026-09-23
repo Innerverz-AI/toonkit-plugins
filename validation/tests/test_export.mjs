@@ -21,9 +21,11 @@ test('one click and exact new video excludes old output and 3D preview',async()=
  assert.equal(a.stage,'metadata-ready');assert.deepEqual(a.videos.map(v=>v.outputVideoNodeId),['output']);assert.equal(b.stage,'metadata-ready');assert.equal(env.clicks,1);assert.equal(a.diagnostics.hasFocus,null);
 });
 test('successful editor closure still accepts decoded output',async()=>{const env=environment({closed:true,videos:[{id:'output'}]});assert.equal((await run(env.tab,ticket,controls,{})).stage,'metadata-ready');assert.equal(env.clicks,1)});
-test('hidden, stale, dirty and changed profile cannot click',async()=>{
- for(const [options,stage] of [[{hidden:true},'needs-visible-tab'],[{stale:true},'needs-editor-reopen'],[{dirty:true},'needs-clean-save'],[{profile:false},'engine-profile-mismatch']]){const env=environment(options);assert.equal((await run(env.tab,ticket,controls,{})).stage,stage);assert.equal(env.clicks,0)}
+test('hidden, stale and dirty editor cannot click',async()=>{
+ for(const [options,stage] of [[{hidden:true},'needs-visible-tab'],[{stale:true},'needs-editor-reopen'],[{dirty:true},'needs-clean-save']]){const env=environment(options);assert.equal((await run(env.tab,ticket,controls,{})).stage,stage);assert.equal(env.clicks,0)}
 });
+test('changed build filenames do not prevent a ready export',async()=>{const env=environment({profile:false});await run(env.tab,ticket,controls,{});assert.equal(env.clicks,1)});
+test('no recorded click cannot be mislabeled render-complete',async()=>{const env=environment();assert.equal((await run(env.tab,{...ticket,allowClick:false},controls,{})).stage,'click-status-unknown');assert.equal(env.clicks,0)});
 test('still rendering yields without metadata or second click',async()=>{const env=environment({rendering:true});const r=await run(env.tab,{...ticket,allowClick:false},controls,{});assert.equal(r.stage,'rendering');assert.equal(env.clicks,0)});
 test('cold ticket never clicks again and missing output remains pending',async()=>{const env=environment({closed:true});const r=await run(env.tab,{...ticket,allowClick:false,outputVideoNodeId:'output'},controls,{});assert.equal(r.stage,'metadata-pending');assert.equal(env.clicks,0)});
 test('candidate-scoped metadata ignores other new videos',async()=>{const env=environment({videos:[{id:'other'},{id:'output'}]});const r=await run(env.tab,{...ticket,allowClick:false,outputVideoNodeId:'output'},controls,{});assert.deepEqual(r.videos.map(v=>v.outputVideoNodeId),['output']);assert.equal(env.clicks,0)});

@@ -79,6 +79,16 @@ class SpatialFailures(unittest.TestCase):
         a,p=synthetic();_,thin=box_object({'id':'thin','center':[0,1,.5],'size':[3,2,.005],'role':'occluder','purpose':'test'})
         a['samples']=a['samples'][:2];a['samples'][0]['position'][2]=0;a['samples'][1]['position'][2]=1
         self.assertFalse(interactions([a],[p,thin],{},24)['passed'])
+    def test_camera_segment_cannot_tunnel_through_thin_wall(self):
+        from preflight import validate
+        cams=[];rows=[]
+        for i in range(24):
+            pos=[-.5 if i<12 else .5,.8,5]
+            cams.append({'frame':i,'position':pos,'rotation':basis_xyz(camera_basis(pos,[0,.8,0])),'focalLength':35})
+            rows.append({'frame':i,'position':[0,0,0],'rotation':[0,0,0],'markers':{'footL':[-.1,0,0],'footR':[.1,0,0],'head':[0,1.6,0]}})
+        _,wall=box_object({'id':'thin','center':[0,.8,5],'size':[.02,3,1],'role':'contact','purpose':'Camera obstacle','usedBy':['shot']})
+        r=validate({'format':'3dref-check-v1','fps':12,'durationSeconds':2,'aspect':'16:9','cameraId':'camera','cameras':cams,'actors':[{'id':'a','samples':rows}],'proxies':[wall], 'quality':{'beats':[{'name':'shot','start':0,'end':2,'actors':{'a':{'height':[.01,1.4],'frameSafeNdc':1.5}}}]}})
+        self.assertIn('camera-swept-proxy-collision:thin',r['issues'])
 
 CACHE=os.environ.get('TOONKIT_TEST_CACHE')
 @unittest.skipUnless(CACHE,'Set TOONKIT_TEST_CACHE with runtime/ and motions/')
@@ -103,6 +113,15 @@ class SourceProduction(unittest.TestCase):
         for preset,speed in [('walking',1.6779),('idle',0)]:
             s=spec(1);s['actors'][0]['preset']=preset;s['actors'][0]['path'][-1]['position'][2]=3*speed;s['quality']['beats'][0]['allowStatic']='Idle performance hold'
             self.assertTrue(self.compile(s)['summary']['checks']['preflight']['passed'])
+    def test_idle_body_motion_is_not_a_frozen_shot(self):
+        s=spec(1);s['actors'][0]['preset']='idle';s['actors'][0]['path'][-1]['position']=[0,0,0]
+        s['quality']['beats'][0]['maxStaticSeconds']=.5
+        b=self.compile(s);self.assertTrue(b['summary']['checks']['preflight']['passed'])
+    def test_default_hold_is_advisory_but_explicit_limit_is_enforced(self):
+        s=spec(1);s['actors'][0]['preset']='standing-idle';s['actors'][0]['path'][-1]['position']=[0,0,0]
+        b=self.compile(s);self.assertTrue(any(w['code'].endswith(':static') for w in b['summary']['checks']['preflight']['warnings']))
+        s['quality']['beats'][0]['maxStaticSeconds']=1
+        with self.assertRaises(PlanningError):self.compile(s)
     def test_full_duration_native_tail_is_covered(self):
         s=spec(2);s['timing']['durationSeconds']=30;s['objects'][0]['center'][2]=85;s['objects'][0]['size'][2]=180
         for a in s['actors']:a['path'][-1].update(time=30,position=[a['path'][-1]['position'][0],0,30*5.5613]);a['support'][0]['end']=30

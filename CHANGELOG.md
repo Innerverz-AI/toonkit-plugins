@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.1 — 2026-09-24
+
+- Restore the native MCP route for simple presets, existing-scene edits, catalog
+  geometry/animals and existing uploaded assets. Compiler scope no longer limits
+  the plugin; basic operations do not require Node/three/FBX setup.
+- Treat renderer bundle filenames as maintenance provenance, not an execution
+  gate. Preserve calibrated pivots, wall-roll, finite contact and shared slowmo.
+- Recover Export readiness failures with durable confirmed-no-click evidence,
+  while retaining duplicate-click protection for uncertain outcomes. Add a
+  launcher/browser integration test for the complete recovery flow.
+- Revalidate saved state on resume and check revision before browser handoff;
+  compare primitive identity and exposed timing, and report missing readback.
+- Count body animation when detecting holds; default hold observations are
+  advisory and explicit shot limits remain enforced. Check camera movement
+  segments for proxy collisions.
+- Preserve AI production guidance, OAuth/MCP configuration, marketplace paths
+  and host invocation conventions. Both host manifests carry the patch version.
+
+Existing compiled runs retain their original runtime for recovery; start new
+production with this version. No account migration is required.
+
 ## 0.2.0 — 2026-09-24
 
 - Replace the one-actor compiler with `3dref-production-v2` and a single

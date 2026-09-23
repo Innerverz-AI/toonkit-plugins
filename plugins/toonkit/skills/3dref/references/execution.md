@@ -1,6 +1,6 @@
 # Production execution
 
-One compiler and bridge handle one or many actors. Use a fresh scene on a new or existing canvas; preserve earlier nodes. Existing-scene patching, imported rigs and unprofiled geometry are outside this release. Do not replace a failed guard with handwritten MCP batches.
+One compiler and bridge handle one or many actors. Use a fresh scene on a new or existing canvas; preserve earlier nodes. For existing-scene edits or other live features use [native execution](native.md). The compiler subset is not a plugin-wide restriction. Do not bypass a failed measured constraint with fabricated evidence.
 
 ## Prepare once
 
@@ -51,12 +51,12 @@ Read the browser tool's current API once. Reuse a suitable ToonKit tab while res
 | `useProject` | `{canvasId,url}` from the current observed canvas; binds and reads it. Or `createProject` with `{name}` when a new canvas is requested. |
 | Browser | Show the bound/returned URL. |
 | `createScene` | `{name,projectVisible:true}` only after the actual project is visible. Returns the owned scene ID. |
-| Browser | Open that exact scene editor and show its timeline. Read loaded script filenames from the public DOM once; compare to `engine-profile.json.requiredAssetNames`. |
-| `advance` | `{editorVisible:true,engineAssetNames:[observed names]}`. At most 45s of dispatch/application work per window. Repeat only for pending progress. |
+| Browser | Open that exact scene editor and show its timeline. Confirm the intended editor and assets are ready. JS filenames are not a compatibility test. |
+| `advance` | `{editorVisible:true}`. At most 45s of dispatch/application work per window. Repeat only for pending progress. |
 
-Before every new batch the bridge obtains a fresh signed logical revision and waits for all accepted work to materialize. Header-only reads keep payloads small; the initial template and final scene get full verification. Never apply over a changed sequence, normalization conflict, incompatible catalog, unknown actor or changed profile. A changed public asset filename means this release needs profile revalidation; production must not guess compatibility.
+Before every new batch the bridge obtains a fresh signed logical revision and waits for all accepted work to materialize. Header-only reads keep payloads small; the initial template and final scene get full verification. Never apply over a changed sequence, normalization conflict, incompatible catalog or unknown actor. Catalog/schema checks are scoped to the commands used; public chunk filenames are maintenance evidence only.
 
-All transform/camera keys for all actors precede pose overlays. No playback or Export between these passes. Final readback compares every emitted numeric field/key and inherited-pose state, with the safe view's 0.001 rounding tolerance. This proves saved fidelity, not pixels or art direction.
+All transform/camera keys for all actors precede pose overlays. No playback or Export between these passes. Final readback compares exposed emitted fields, primitive identity, numeric keys and inherited-pose state, with the safe view's 0.001 rounding tolerance. Omitted timing is reported as unverified by readback and checked in the editor/output. This establishes scoped saved fidelity, not pixels or art direction.
 
 ## Export and delivery
 
@@ -64,9 +64,11 @@ The browser action below uses Codex's browser API. Portable hosts use the [host-
 
 `advance` returns `export-ready`, saved verification and a durable export ticket. Observe the exact editor once: expected actor names and frame count, assets ready, Save clean, uniquely enabled Export. The UI total is N frames; the last key is frame N−1. If a stale editor still shows its initial timing/objects, reopen that scene from the saved canvas through normal UI. Do not Save stale data over the verified scene. Resolve only owned dirty changes.
 
-Request `browserCode` with `{tabVariable,controls:{editorNodeId,exportLabel,saveLabel}}`, using observed values. The same `browser` object can be included in `advance` when readiness is already known. Execute the emitted browser action unchanged with a 55s tool timeout. The helper checks public DOM readiness, journals the ticket, clicks Export once per issued attempt, waits up to 40s, and reads output-video metadata. It excludes the short preview embedded in a 3D node.
+Request `browserCode` with `{tabVariable,controls:{editorNodeId,exportLabel,saveLabel}}`, using observed values. The same `browser` object can be included in `advance` when readiness is already known. Execute the emitted browser action unchanged with a 55s tool timeout. The runtime journals an attempt before yielding browser code; the helper checks public DOM readiness, clicks Export once per attempt, waits up to 40s and reads output-video metadata. It excludes the short preview embedded in a 3D node.
 
-Pass its compact result to `finishExport`. Only when rendering has ended does the bridge read canvas outputs, identify the unique new source-linked video, and match its exact DOM node. It checks decoded duration, dimensions/aspect, readyState and error. No media download, private renderer/store, network export endpoint, `get_media` loop or substitute renderer.
+Pass every compact browser result to `finishExport`, including readiness failures. `export-not-started` means the returned attempt evidence proves no click: resolve readiness and call `advance` for a fresh attempt, then `browserCode`. Do not reuse old attempt evidence. A lost/ambiguous click remains read-only until reconciled.
+
+Pass output evidence to `finishExport`. Only when rendering has ended does the bridge read canvas outputs, identify the unique new source-linked video, and match its exact DOM node. It checks decoded duration, dimensions/aspect, readyState and error. No media download, private renderer/store, network export endpoint, `get_media` loop or substitute renderer.
 
 If the output is offscreen/unmounted, `finishExport` returns `metadata-pending` and its exact output ID. Focus that known video using the normal visible canvas UI once; request `browserCode` again (click disabled) and `finishExport` with its metadata. A normal media Play is allowed if decoding requires it. Do not use the 3D preview, a different video or another Export as evidence. If rendering is still active, resume only the existing ticket; no MCP polling during frame capture. Keep the tab visible.
 
@@ -78,6 +80,6 @@ Return the canvas link, actual video duration/dimensions, scene FPS, and a conci
 
 `close` stops a healthy worker without changing the scene. `recover` stops only the known retained worker after an uncertain ACK; then reload from the same journal. Use `confirmedStopped:true` only if a previously cancelled execution cell has actually ended. Lost tool memory is recoverable from disk, but release the previous worker's lock first; never delete locks or guess a process to kill.
 
-Cold restart intentionally disables an automatic second Export after a ticket was issued. Inspect existing progress/output. Ask for a retry decision only when whether a click happened remains ambiguous; elapsed time is not authorization.
+Cold restart disables an automatic second Export after an unresolved ticket; durable confirmed-no-click evidence allows readiness recovery. Inspect existing progress/output. Ask for a retry decision only when whether a click happened remains ambiguous; elapsed time is not authorization.
 
 After two minutes without scene-application progress or five minutes without export progress, stop automatic work and report the concrete pending state. Preserve the run. Small object count/video size does not identify the cause of delay; only attribute application, frame capture, encoding or materialization latency when the evidence distinguishes it. Keep user updates between bounded windows. Do not run screenshot/contact-sheet verification loops.

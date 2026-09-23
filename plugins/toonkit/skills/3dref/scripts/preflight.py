@@ -111,6 +111,7 @@ def validate(data):
         for a,b in zip(frames,frames[1:]):
             static=length(sub(cams[b]['position'],cams[a]['position']))<1e-5 and angular_distance(cams[a]['rotation'],cams[b]['rotation'])<1e-3 and abs(cams[a]['focalLength']-cams[b]['focalLength'])<1e-5
             static=static and all(length(sub(x['samples'][a]['position'],x['samples'][b]['position']))<1e-5 and angular_distance(x['samples'][a]['rotation'],x['samples'][b]['rotation'])<1e-3 for x in actors)
+            static=static and all(length(sub(marker_world[aid][a][k],marker_world[aid][b][k]))<1e-5 for aid in actor_map for k in marker_world[aid][a])
             relative_static=True
             for aid,rule in beat['actors'].items():
                 if rule.get('offscreen'):continue
@@ -131,7 +132,10 @@ def validate(data):
             limit=beat.get('maxStaticSeconds' if label=='static' else 'maxRelativeHoldSeconds',2)
             require(finite(limit) and limit>=0,'Invalid hold limit')
             if seconds>limit:
-                if not beat.get(option):fail(name+':'+label,frames[0])
+                if not beat.get(option):
+                    explicit='maxStaticSeconds' if label=='static' else 'maxRelativeHoldSeconds'
+                    if explicit in beat:fail(name+':'+label,frames[0])
+                    else:warnings.append({'code':name+':'+label,'seconds':seconds,'reason':'Review against intended direction; a hold is not inherently invalid'})
                 else:require(isinstance(beat[option],str),'Hold exemption must explain intended direction')
         metrics[name]={'cameraTravel':round(translation,4),'cameraRotationDegrees':round(angle,4),'longestStaticSeconds':max_frozen/fps,'longestRelativeHoldSeconds':max_relative/fps}
     require(coverage==set(range(n)),'Beats do not cover the entire playable timeline')
@@ -158,6 +162,7 @@ def validate(data):
             for i,c in enumerate(cams):
                 origin=local(c['position'])
                 if inside_box(origin,expanded):fail('camera-proxy-collision:'+p['id'],i)
+                if i and ray_box(local(cams[i-1]['position']),origin,expanded):fail('camera-swept-proxy-collision:'+p['id'],i)
                 for aid in actor_map:
                     active=[b for b in beats if b['start']<=i/fps<b['end'] and not b['actors'][aid].get('offscreen')]
                     if not active:continue

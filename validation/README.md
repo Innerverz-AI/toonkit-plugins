@@ -15,11 +15,12 @@ The finite source profile covers calibrated boxes, stock humans, one camera, 2â€
 
 A live release check additionally requires authenticated ToonKit MCP and visible browser access. Run the packaged runtime from a fresh compiled run; verify saved fields, perform one UI Export, correlate source/output and decode metadata, then group. Offline mocks do not replace that check. Human visual acceptance and other operating systems/browser hosts remain distinct evidence.
 
-The repository suite covers 25 calculation/source tests, 9 bridge/recovery tests
-(including the full portable lifecycle through delivery), and 6 Codex DOM-export
-tests. `tests/test_release.py` additionally checks synchronized packaging,
-relocation, hash integrity and deterministic archives. These are development tests,
-not part of the installed skill.
+The suites cover calculation/source motion, canonical bridge/cold-relay recovery,
+DOM export and the retained launcher combined with browser readiness failures.
+Regression cases include changed web filenames, changed saved geometry/timing,
+stale verification and retry authorization scoped to the exact export attempt.
+`tests/test_release.py` checks synchronized packaging, relocation, hash integrity
+and deterministic archives. Tests are not part of the installed skill.
 
 The runner accepts `--plugin-root <extracted>/plugins/toonkit` to test a packaged
 plugin in isolation using the same raw fixtures. It does not import the checkout's

@@ -138,7 +138,7 @@
       for(const c of bound(B.batches[i].commands)){
         const id=c.objectId||receipt.objectIds?.[c.clientRef];
         if(c.op==='object.add'){
-          require(id,'Missing minted object ID');objects.set(id,{kind:c.kind,...(c.name?{name:c.name}:{}),transform:c.transform,keys:new Map()});
+          require(id,'Missing minted object ID');objects.set(id,{kind:c.kind,...(c.shape?{shape:c.shape}:{}),...(c.name?{name:c.name}:{}),transform:c.transform,keys:new Map()});
           continue;
         }
         if(c.op.startsWith('scene.'))continue;
@@ -163,6 +163,8 @@
       else require(a===b,'Stored field mismatch '+path);fields++;
     }
     require(s.totalObjects===exp.size,'Unexpected object count/concurrent edit');
+    const observedTiming=s.timing||s.scene?.timing||s;
+    for(const field of ['fps','durationSeconds'])if(observedTiming[field]!==undefined)match(B.timing[field],observedTiming[field],'scene.'+field);
     for(const [id,e] of exp){
       const o=s.objects.find(x=>x.id===id);if(!o&&!all)continue;require(o,'Missing stored object '+id);
       for(const [k,v] of Object.entries(e))if(k!=='keys')match(v,o[k],id+'.'+k);
@@ -181,7 +183,8 @@
         if(o.kind==='camera'&&e.camera)for(const field of ['near','far'])match(e.camera[field],k.camera?.[field],'key.camera.'+field);
       }
     }
-    return {objects:exp.size,keys,comparedFields:fields,maxStoredFieldError:maxError,appliedThroughSeq:s.appliedThroughSeq};
+    return {objects:exp.size,keys,comparedFields:fields,maxStoredFieldError:maxError,appliedThroughSeq:s.appliedThroughSeq,
+      timingReadback:['fps','durationSeconds'].every(k=>observedTiming[k]!==undefined)?'verified':'not-exposed; check editor timing and decoded output'};
   }
   function canvasVideos(canvas) {
     require(Array.isArray(canvas.nodes)&&Array.isArray(canvas.edges),'Unrecognized canvas shape');
@@ -214,7 +217,8 @@
     }),
     dispatch:({editorVisible=false,engineAssetNames=[],maxBatches=1000,timeBudgetMs=45000}={})=>exclusive(async()=>{
       require(editorVisible,'Open this node editor and visible timeline first');
-      require(B.engineProfile.requiredAssetNames.every(n=>engineAssetNames.includes(n)),'Renderer profile mismatch: verify/update public engine contract before writing');
+      // Web chunk names are build artifacts, not a renderer capability contract.
+      // The live catalog validates the wire contract; calibrated math is release-tested.
       require(Number.isInteger(maxBatches)&&maxBatches>0&&maxBatches<=1000,'Invalid batch window');
       require(timeBudgetMs>0&&timeBudgetMs<=45000,'Bounded dispatch window required');
       const deadline=now()+timeBudgetMs;await catalog();let sent=0;
@@ -236,7 +240,6 @@
     }),
     verify:({deadline=now()+40000}={})=>exclusive(async()=>{
       require(B.batches.every((_,i)=>last('accepted','batch-'+i)),'Dispatch incomplete');
-      if(last('verified'))return last('verified').summary;
       const s=await readyScene(true,deadline);if(!s)return {stage:'application-pending'};
       const summary=verifyScene(s);await log({type:'verified',summary,revision:s.revision});return summary;
     }),
@@ -246,11 +249,21 @@
         const {canvasId}=bindings(),c=await read('toonkit_get_canvas',{canvasId});
         await log({type:'export-baseline',videoIds:canvasVideos(c).map(n=>n.id)});
       }
-      const issued=last('export-ticket'),ids=bindings();
-      if(!issued)await log({type:'export-ticket',id:runId,issuedAt:now()});
-      return {ticketId:runId,source3dNodeId:ids.nodeId,canvasId:ids.canvasId,canvasUrl:ids.url,expectedActorNames:B.actors.map(a=>a.name),engineAssetNames:B.engineProfile.requiredAssetNames,
-        baselineVideoIds:last('export-baseline').videoIds,allowClick:!issued,
+      let issued=last('export-ticket');const ids=bindings(),observation=last('export-observation');
+      const retry=issued&&observation?.attemptId===issued.attemptId&&observation.clickAttempted===false&&
+        ['needs-visible-tab','needs-editor-reopen','needs-clean-save','needs-export-control'].includes(observation.stage);
+      const allowClick=!issued||retry;
+      if(allowClick)issued=await log({type:'export-ticket',id:runId,attemptId:runId+'-'+(E.filter(e=>e.type==='export-ticket').length+1),issuedAt:now()});
+      return {ticketId:runId,attemptId:issued.attemptId,source3dNodeId:ids.nodeId,canvasId:ids.canvasId,canvasUrl:ids.url,expectedActorNames:B.actors.map(a=>a.name),
+        baselineVideoIds:last('export-baseline').videoIds,allowClick,verifiedRevision:last('verified').revision,
         expectedDuration:B.timing.durationSeconds,sceneFps:B.timing.fps};
+    }),
+    checkExportRevision:()=>exclusive(async()=>{
+      require(last('verified'),'Verify before preparing browser Export');
+      const s=await readyScene(false);
+      if(!s)return {stage:'application-pending'};
+      require(s.revision===last('verified').revision,'Scene changed after verification; inspect before Export');
+      return {stage:'export-current'};
     }),
     collectExport:()=>exclusive(async()=>{
       const baseline=last('export-baseline');require(baseline,'Record baseline before the single UI Export');
@@ -301,8 +314,14 @@
   api.finishExport=async(evidence)=>{
     if(last('complete'))return {stage:'complete',...last('complete').result};
     require(evidence?.ticketId===runId,'Export evidence/ticket mismatch');
+    if(evidence.attemptId!==undefined){
+      require(evidence.attemptId===last('export-ticket')?.attemptId,'Stale export attempt evidence');
+      if(typeof evidence.clickAttempted==='boolean')await exclusive(()=>log({type:'export-observation',attemptId:evidence.attemptId,stage:evidence.stage,clickAttempted:evidence.clickAttempted}));
+      if(evidence.clickAttempted===false&&['needs-visible-tab','needs-editor-reopen','needs-clean-save','needs-export-control'].includes(evidence.stage))
+        return {stage:'export-not-started',reason:evidence.stage,resume:'advance after resolving readiness; no click occurred'};
+    }
     // Never query canvas while UI says rendering or metadata is not ready.
-    if(!['metadata-ready','render-complete','metadata-pending'].includes(evidence.stage))return {stage:'export-pending',reason:evidence.stage};
+    if(!['metadata-ready','render-complete','metadata-pending','click-status-unknown'].includes(evidence.stage))return {stage:'export-pending',reason:evidence.stage};
     require(Array.isArray(evidence.videos),'Missing output observation');
     const candidate=await api.collectExport();if(candidate.stage)return candidate;
     const matching=evidence.videos.filter(v=>v.outputVideoNodeId===candidate.outputVideoNodeId);

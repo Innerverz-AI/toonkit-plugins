@@ -43,7 +43,7 @@ For an exact 90° wall-as-floor transition, use `camera.floorRoll:{start,end,deg
 
 ## Framing and motion constraints
 
-`quality.beats` covers every output frame, with unique names and all actor IDs in each `actors` map. A row is `{name,start,end,actors:{ID:{height:[min,max],frameSafeNdc?,actionRate?,minTravel?,maxTravel?}},cameraMotion?,maxStaticSeconds?,maxRelativeHoldSeconds?}`. Height is fraction of frame. Intentional absence uses `{offscreen:true,reason}`. `cameraMotion` can require `minTravel/minRotationDegrees`. An intentional static/relative tracking interval has `allowStatic`/`allowRelativeHold` explaining it. Default maximum holds are 2s.
+`quality.beats` covers every output frame, with unique names and all actor IDs in each `actors` map. A row is `{name,start,end,actors:{ID:{height:[min,max],frameSafeNdc?,actionRate?,minTravel?,maxTravel?}},cameraMotion?,maxStaticSeconds?,maxRelativeHoldSeconds?}`. Height is fraction of frame. Intentional absence uses `{offscreen:true,reason}`. `cameraMotion` can require `minTravel/minRotationDegrees`. An intentional static/relative tracking interval has `allowStatic`/`allowRelativeHold` explaining it. Holds longer than 2s are advisory by default. Set an explicit `maxStaticSeconds`/`maxRelativeHoldSeconds` only when that is a real shot requirement; body marker motion counts as animation even with a fixed root/camera.
 
 `quality.limits` maps `camera` and actor IDs to `maxSpeed`, optionally `maxAcceleration/maxJerk`; camera also supports `maxAngularSpeed`. Choose meaningful bounds for the requested style. `maxProxies` defaults to 24; a larger number needs `budgetReason`. Do not add free-standing `surfaces` inside beats; support and floorRoll own that contract.
 

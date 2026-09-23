@@ -21,7 +21,7 @@ In mixed pipelines, load AI rules for actual AI stages; do not reread unchanged 
 
 ## Scope a location reference
 
-For 3Dref, “faithful to the location sheet” means preserving shot-relevant positions, distances, height relationships and interaction surfaces using simple proxies. Plan the actors and camera first, then construct only the needed part of the camera's swept view. Do not rebuild the city panorama, visual style or decorative details. The 3dref common numerical preflight is mandatory for all supported actor counts through the one production compiler. Save/Export success alone is not proof that the planned beats, slowmo or camera roll were implemented.
+For 3Dref, “faithful to the location sheet” means preserving shot-relevant positions, distances, height relationships and interaction surfaces using simple proxies. Plan the actors and camera first, then construct only the needed part of the camera's swept view. Do not rebuild the city panorama, visual style or decorative details. Use the 3dref compiler for measured contact, wall rolls and body retiming; simple native operations and other catalog features use its native MCP route with scoped checks. Save/Export success alone is not proof that the planned beats, slowmo or camera roll were implemented.
 
 ## Connection
 

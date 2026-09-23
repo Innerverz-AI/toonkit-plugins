@@ -1,16 +1,11 @@
 {
   "id": "toonkit-web-2026-09-24-v1",
   "schemaVersion": 1,
-  "verifiedDeploy": "fd3cd7cfd9f4eee54013135b2b3177fc26fde72d",
-  "requiredAssetNames": [
-    "3s5923ugb8f_f.js",
-    "2re2rwt1x47dg.js",
-    "21z7f1s7qws5o.js"
-  ],
+  "verifiedDeploy": "d23fcda7ae93148b03ed46f4bf93c57a3c342767",
   "evidence": [
     {
-      "url": "https://public-cdn.toonkit.io/_next/static/chunks/3s5923ugb8f_f.js",
-      "sha256": "5fea39dd1e7901c096c81e542b0444cc3011446ea348e32c2171ffb14b6b162c",
+      "url": "https://public-cdn.toonkit.io/_next/static/chunks/1dmstk8ro295x.js",
+      "sha256": "2c196533ca264661ea7f6faae03606c3816cb5c9252d936bf11203b882cb54d5",
       "facts": [
         "box uses BoxGeometry(1,1,1)",
         "all shape geometry is translated by -boundingBox.min.y before mesh creation",
@@ -69,5 +64,11 @@
     "heightMeters": 1.7,
     "jointConvention": "source quaternion multiplied by YXZ correction",
     "rootRetarget": "fixed XZ, source Y plus rest-hip offset"
-  }
+  },
+  "observedAssetNames": [
+    "1dmstk8ro295x.js",
+    "2re2rwt1x47dg.js",
+    "21z7f1s7qws5o.js"
+  ],
+  "assetEvidencePolicy": "Maintenance provenance only; never an execution gate. Validate semantic math during releases, live catalog/scene contracts during execution."
 }

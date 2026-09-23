@@ -91,10 +91,6 @@
     if(action==='close'){
       await rpc('close');clearState=true;return {stage:'closed',resumable:true};
     }
-    if(action==='browserCode'){
-      // Retained before yielding code: interruption resumes read-only, never a blind re-export.
-      return {stage:'browser-action',code:browserAction(args)};
-    }
     const metrics=kept.state.metrics ||= {...(kept.state.events.findLast(e=>e.type==='metrics')?.value||{mcpCalls:0,savedReads:0,waitMs:0,journalWrites:0})};
     const bridge=eval(kept.bridgeCode)({
       call:async(suffix,input)=>{metrics.mcpCalls++;if(suffix.endsWith('_get_scene'))metrics.savedReads++;
@@ -102,10 +98,19 @@
       append:async events=>{await rpc('append',{events});metrics.journalWrites++;},
       sleep:async ms=>{metrics.waitMs+=ms;await env.sleep(ms);}
     },kept.state);
+    if(action==='browserCode'){
+      if(kept.ticket?.allowClick&&!kept.browserIssued){
+        const current=await bridge.checkExportRevision();if(current.stage!=='export-current')return current;
+      }
+      return {stage:'browser-action',code:browserAction(args)};
+    }
     require(['useProject','createProject','createScene','advance','finishExport','group'].includes(action),'Unknown runtime phase');
     const result=action==='useProject'?await bridge.useProject(args):action==='createProject'?await bridge.createProject(args.name):action==='createScene'?
       await bridge.createScene(args.name,{projectVisible:args.projectVisible}):await bridge[action](args);
-    if(result.ticket)kept.ticket=result.ticket;
+    if(result.ticket){
+      if(result.ticket.attemptId!==kept.ticket?.attemptId)kept.browserIssued=false;
+      kept.ticket=result.ticket;
+    }
     if(result.stage==='export-ready'&&args.browser)result.browserCode=browserAction(args.browser);
     if(result.stage==='delivered'){
       await rpc('append',{events:[{type:'metrics',value:{...metrics}}]});

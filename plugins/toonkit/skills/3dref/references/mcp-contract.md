@@ -1,6 +1,6 @@
 # MCP schema profile
 
-Read only for maintenance or a changed connected contract. Production does not bypass the packaged compiler/runtime. This profile uses commandSchemaVersion=1 and templateVersion=1; the live catalog and connected tool declarations are authoritative. This is wire grammar, not a scene example or permission to overwrite user work.
+Read only for maintenance or a changed connected contract. Use the compiled runtime for its supported choreography; other catalog operations use the native MCP route. This profile uses commandSchemaVersion=1 and templateVersion=1; the live catalog and connected tool declarations are authoritative. This is wire grammar, not a scene example or permission to overwrite user work.
 
 ## Connected tools
 
