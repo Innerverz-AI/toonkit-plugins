@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run release validation without live MCP/browser writes. Cache requires runtime/three and motions/."""
+"""Run release validation without live MCP/browser writes. Cache requires runtime/three and motions/; the motion-MV suite requires ffmpeg with libvpx-vp9."""
 import argparse,ast,hashlib,json,os,re,subprocess,sys,time,uuid
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--cache',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--plugin-root',type=Path,help='Validate an extracted plugin instead of the checkout');p.add_argument('--fetch',action='store_true',help='Fetch missing checksum-pinned public motion files');a=p.parse_args()
@@ -12,7 +12,7 @@ def run(argv,env=None):
 a.work.mkdir(parents=True,exist_ok=True);reports={}
 try:
     for file in S.glob('*.py'):ast.parse(file.read_text())
-    for file in list(S.glob('*.mjs'))+list(S.glob('*.js')):
+    for file in list(S.glob('*.mjs'))+list(S.glob('*.js'))+list((PLUGIN/'skills/toonkit-motion-mv/scripts').glob('*.*js')):
         r=run(['node','--check',str(file)])
         if not r['passed']:raise ValueError(r['stderr'])
     for file in (PLUGIN/'skills').rglob('*.md'):
@@ -29,8 +29,9 @@ try:
     reports['calculation']=run([sys.executable,'-B',str(ROOT/'validation/tests/test_previz.py')],env)
     reports['bridge']=run(['node','--test','--test-reporter=tap',str(ROOT/'validation/tests/test_bridge.mjs')],env)
     reports['export']=run(['node','--test','--test-reporter=tap',str(ROOT/'validation/tests/test_export.mjs')],env)
+    reports['motion']=run(['node','--test','--test-reporter=tap',str(ROOT/'validation/tests/test_motion_mv.mjs')],env)
 except Exception as e:reports['setup']={'passed':False,'message':str(e)}
-passed=all(r['passed'] for r in reports.values()) and len(reports)==4
+passed=all(r['passed'] for r in reports.values()) and len(reports)==5
 for name,report in reports.items():(a.work/(name+'.json')).write_text(json.dumps(report,indent=2)+'\n')
 summary={'passed':passed,'suites':{k:{x:v[x] for x in ('passed','exitCode','seconds','message') if x in v} for k,v in reports.items()},'python':sys.version.split()[0],'node':subprocess.check_output(['node','--version'],text=True).strip(),'cache':str(a.cache),'liveToolsUsed':False}
 (a.work/'validation-result.json').write_text(json.dumps(summary,indent=2)+'\n');print(json.dumps(summary));sys.exit(0 if passed else 1)

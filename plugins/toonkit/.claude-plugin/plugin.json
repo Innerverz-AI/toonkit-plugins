@@ -1,6 +1,6 @@
 {
   "name": "toonkit",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Generate images and videos and work with Toonkit canvases through MCP.",
   "author": {
     "name": "Innerverz"

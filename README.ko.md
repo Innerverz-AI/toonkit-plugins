@@ -2,7 +2,7 @@
 
 [English](README.md) | **한국어**
 
-Toonkit의 이미지·영상 생성과 Canvas 작업을 위한 **Skill 2종 + MCP 연결 설정** 패키지입니다.
+Toonkit의 이미지·영상 생성과 Canvas 작업을 위한 **Skill 3종 + MCP 연결 설정** 패키지입니다.
 하나의 `plugins/toonkit`을 Codex와 Claude Code가 공유합니다. MCP 서버는 Toonkit에서
 운영하므로 사용자가 별도 서버를 실행할 필요는 없습니다.
 
@@ -33,6 +33,11 @@ Toonkit의 이미지·영상 생성과 Canvas 작업을 위한 **Skill 2종 + MC
   훅도 POSIX 셸(Windows는 Git Bash)을 사용하며, 셸이 없으면 페이로드를 직접 전달하는 방식으로
   돌아갑니다.
 
+`toonkit-motion-mv`에는 다음이 추가로 필요합니다.
+
+- 처리 도구용 ffmpeg(libvpx-vp9 포함)와 Node 20+. 렌더러 HyperFrames는 Node 22+와 npm이 필요하며,
+  프로젝트마다 버전을 고정해 설치합니다(첫 스캐폴드에 네트워크 필요).
+
 플러그인 설치와 Toonkit 계정 인증은 별도 단계입니다. 비밀번호나 토큰을 이 저장소의
 설정 파일에 적지 않습니다.
 
@@ -41,6 +46,7 @@ Toonkit의 이미지·영상 생성과 Canvas 작업을 위한 **Skill 2종 + MC
 | Skill | 용도 |
 |---|---|
 | `toonkit-project-manager` | Toonkit 이미지·영상·음성 작업에서 켜집니다. 제작을 계획하고, 유료 작업 전에 크레딧을 견적하고, 생성을 실행해 Canvas로 전달합니다. |
+| `toonkit-motion-mv` | Toonkit 캐릭터로 만드는 2D 애니 모션그래픽 영상. 명시적으로 요청하거나 project manager가 넘겨줄 때만 씁니다. 비트에 맞춘 샷 계획, 크로마키 배경 캐릭터 시트·포즈 스틸·짧은 셀애니 플레이트 생성, 키잉·리타임, HyperFrames + GSAP 결정적 합성을 로컬에서 MP4로 렌더합니다. |
 | `3dref` | 3D 프리비즈. MCP로 Toonkit 3D Reference 씬(배치·모션·카메라)을 만들고, 화면에 띄운 에디터에서 레퍼런스 영상을 내보냅니다. 명시적으로 요청할 때만 씁니다(Codex `$3dref`, Claude Code `/toonkit:3dref`). |
 
 ## 설치
@@ -76,6 +82,7 @@ claude plugin install toonkit@toonkit --scope user
 - “Toonkit으로 비 오는 도쿄 골목 이미지를 만들어줘.”
 - “이 Toonkit Canvas에서 사용할 이미지 모델과 옵션을 확인해줘.”
 - “이 이미지로 영상을 만들 때 필요한 크레딧을 먼저 알려줘.”
+- “내 Toonkit 캐릭터와 키네틱 타이포로 128 BPM에 맞춘 12초 2D 애니 모션그래픽 인트로를 만들어줘.”
 - “3dref로 캐릭터가 천천히 물러나는 카메라를 향해 걸어오는 6초 16:9 프리비즈를 만들어줘.”
 
 project-manager Skill은 생성 전에 서버의 `toonkit_get_generation_guide`를 읽습니다.
@@ -96,6 +103,7 @@ plugins/toonkit/
   .codex-plugin/plugin.json            Codex manifest + MCP configuration
   .claude-plugin/plugin.json           Claude Code manifest + MCP configuration
   skills/toonkit-project-manager/      Production planning, cost gates, AI generation
+  skills/toonkit-motion-mv/            Motion-graphics MV workflow, spec, mvkit toolkit, motion kit
   skills/3dref/                        Shared compiler, runtime/relay, references
 validation/                           Development tests; not skill runtime inputs
 scripts/release.py                     Version/path checks and reproducible archive
@@ -149,6 +157,10 @@ Codex의 메모리 유지 런타임보다 모델 전달 횟수가 많으며, 두
 - 라이브 검증이 남은 항목: 두 클라이언트 새 설치·OAuth(Claude 확인은 기존 인증 사용),
   Git Bash 유무별 Windows Claude Code를 포함한 다른 운영체제, 유료 생성. 결정적 테스트가
   모델의 계획 지침 이행률을 측정하는 것은 아닙니다. 인증 설정은 유지합니다.
+
+- Motion-MV(0.3.0): 분석(정지·동작 구간, 스미어 창, 크로마 평탄도), 스필 제거·알파 키잉, 프레임 단위 리타임, 외곽선,
+  박 위상, 가사 스냅, 순환 동작 리타임, shotkit 빌드, 플랜·모션 토큰 린트를 오프라인으로 검증합니다. 라이브 검증(macOS,
+  Claude Code, 프로덕션 MCP)은 74초 2D 애니 모션그래픽 영상 1편 E2E입니다. 다른 호스트와 운영체제는 아직 검증 전입니다.
 
 개발·배포 명령은 [CONTRIBUTING](CONTRIBUTING.md)에 있습니다.
 테스트는 개발·배포 시 실행하며 사용자 프리비즈 작업마다 실행하지 않습니다.

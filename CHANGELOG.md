@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.3.0 — 2026-09-30
+
+- New shared skill `toonkit-motion-mv`: 2D anime motion-graphics videos in which
+  typography and shapes lead and ToonKit characters perform inside them. It runs
+  only on explicit invocation, an explicit request for a Toonkit 2D anime
+  motion-graphics video, or a hand-over from `toonkit-project-manager`. Beat grid → `PLAN.json` shot plan
+  (types T/C/M/P/X) → chroma reference sheet → pose stills and short plates →
+  analysis, keying and retiming → HyperFrames + GSAP composition → local MP4.
+- Production rules: every character reference image is generated on a flat
+  chroma background; fast or impact beats are pose cuts, smooth acting is a video
+  plate; plates default to the 2D cel-anime Seedance variant with an anti-smear
+  prompt block; no 1080p generation by default (720p plates, optional 480p preview).
+- `mvkit.mjs` (Node 20+, ffmpeg; no npm dependencies): `analyze` (spans, holds,
+  interior sharpness, smear cover windows, events, flat-chroma check), `key`
+  (green/blue/magenta auto mode, border-sampled background, despill, matte
+  anti-aliasing, directional rim, sharpness-adaptive outline stroke, optional
+  neutral shadow, nearest-frame retime, VP9 alpha output), `contact`, `beatgrid`,
+  `plan-check`, `lint` (motion tokens, determinism), `scaffold` (pinned
+  HyperFrames/GSAP project), `font` (vendored Google Fonts), `bitrate`.
+- `motionkit.js`: `enter`/`move`/`exit`/`slam` motion tokens and seek-safe
+  primitives for kinetic type, shape reveals, flashes, smear covers, pose cuts,
+  per-depth virtual camera, line boil and finite ambient loops.
+- `shotkit.mjs` + `shotkit-runtime.js`: data-driven shot engine. One `shots.json`
+  (config, palette, plates, shot list in beats) builds `index.html` and
+  `PLAN.json` from the same source. It provides 11 shot kinds (logo, letters,
+  names, cuts, alternating poses, plate masks, split panels, kaleido, duo, pose, finale),
+  6 backgrounds, 6 camera modes, 8 kinetic-type primitives, automatic smear
+  covers and cycle-phase media snapping.
+- mvkit adds `grid` (beat phase from audio onsets), `snap` (lyric times to vocal
+  onsets and beats), `cycle` (cyclic plate motion to a speed-limited retime map),
+  `transcript` (whisper output) and `review` (runtime validation, then snapshot
+  contact sheets at frame 0, every shot midpoint and the last frame).
+- Execution budgets in the skill: no draft renders, one snapshot review pass,
+  one final render; batched polling, downloads, keying and gates.
+- Live end-to-end (macOS, Claude Code, production MCP): a 74 s, 34-shot, 165 BPM
+  2D anime motion-graphics video set to music, with three original characters, built within 15 images and 20
+  video seconds (870 credits). All three plates measured zero smear frames. The
+  1080p composite renders in about 2 min. shotkit reproduces the composite
+  from its `shots.json`.
+- `toonkit-project-manager` hands explicit 2D anime motion-graphics requests to the new skill;
+  its own behavior is unchanged. 3dref, the bridge, MCP/authentication and
+  marketplace configuration are unchanged.
+- Validation: a new offline suite (`validation/tests/test_motion_mv.mjs`) runs in
+  `validation/run.py`; CI installs ffmpeg for it.
+
 ## 0.2.3 — 2026-09-29
 
 - Claude Code portable relay: `direct.py step --spool` parks every MCP request
