@@ -7,6 +7,13 @@ import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const scripts=path.join(process.env.TOONKIT_TEST_PLUGIN||path.join(root,'plugins/toonkit'),'skills/3dref/scripts');
+// Feed child stdin from a file: spawnSync's `input` pipe occasionally never reaches EOF
+// on some hosts, which hangs the child. A file descriptor always ends.
+function spawnInput(cmd,args,input,options={}){
+ if(input===undefined)return spawnSync(cmd,args,{...options,stdio:['ignore','pipe','pipe']});
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'toonkit-stdin-')),file=path.join(dir,'stdin');fs.writeFileSync(file,input);
+ const fd=fs.openSync(file,'r');try{return spawnSync(cmd,args,{...options,stdio:[fd,'pipe','pipe']})}finally{fs.closeSync(fd);fs.rmSync(dir,{recursive:true,force:true})}
+}
 const factory=eval(fs.readFileSync(path.join(scripts,'bridge.js'),'utf8'));
 const clone=x=>JSON.parse(JSON.stringify(x)), envelope=x=>({structuredContent:clone(x)});
 const B=JSON.parse(fs.readFileSync(process.env.TOONKIT_TEST_BUNDLE,'utf8'));
@@ -82,13 +89,15 @@ test('portable relay full lifecycle survives cold processes without duplicate wr
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'toonkit-relay-'));try{
   fs.copyFileSync(process.env.TOONKIT_TEST_BUNDLE,path.join(dir,'compiled.json'));
   fs.writeFileSync(path.join(dir,'journal.jsonl'),JSON.stringify({type:'init',runId:'portable-001',digest:B.digest})+'\n');const m=mock();
-  const invoke=(args,input)=>{const r=spawnSync(process.env.TOONKIT_TEST_PYTHON||'python3',['-B',path.join(scripts,'direct.py'),dir,...args],{input,encoding:'utf8',maxBuffer:16*1024*1024});assert.equal(r.status,0,r.stderr+' '+r.stdout);return JSON.parse(r.stdout)};
+  const invoke=(args,input)=>{const r=spawnInput(process.env.TOONKIT_TEST_PYTHON||'python3',['-B',path.join(scripts,'direct.py'),dir,...args],input,{encoding:'utf8',maxBuffer:16*1024*1024});assert.equal(r.status,0,r.stderr+' '+r.stdout);return JSON.parse(r.stdout)};
   async function phase(name,args){
    for(let count=0;count<100;count++){
     const r=invoke(['step',name,'--args',JSON.stringify(args)]);
     if(r.stage!=='tool-request')return r;
-    const response=JSON.stringify(await m.call(r.tool,r.arguments));
-    invoke(['accept',r.ioId,'-'],response);invoke(['accept',r.ioId,'-'],response);
+    // Large results go through a response file: piping them to spawnSync stdin is
+    // timing-dependent on some hosts. Small stdin accepts are covered separately.
+    const file=path.join(dir,'response.json');fs.writeFileSync(file,JSON.stringify(await m.call(r.tool,r.arguments)));
+    invoke(['accept',r.ioId,file]);invoke(['accept',r.ioId,file]);
    }throw Error('unbounded relay');
   }
   await phase('createProject',{name:'Portable fixture'});
@@ -157,4 +166,112 @@ test('retained launcher and browser recover pre-click readiness failures end to 
   const done=await step('finishExport',{ticketId:ready.ticket.ticketId,stage:'metadata-ready',videos:[{outputVideoNodeId:'output',durationSeconds:B.timing.durationSeconds,width:640,height:360,readyState:4,error:null}]});
   assert.equal(done.stage,'complete');assert.equal(clicks,1);
  }
+});
+
+// Claude Code spooled relay: the host is simulated, the hook command is the exact
+// one declared in the 3dref skill frontmatter.
+const pluginRoot=process.env.TOONKIT_TEST_PLUGIN||path.join(root,'plugins/toonkit');
+function hookCommands(){
+ const text=fs.readFileSync(path.join(pluginRoot,'skills/3dref/SKILL.md'),'utf8');
+ const fm=text.match(/^---\n([\s\S]*?)\n---/)[1].split('\n');const out={};let event=null;
+ for(let i=0;i<fm.length;i++){
+  const e=fm[i].match(/^  (PreToolUse|PostToolUse|PostToolUseFailure):$/);if(e){event=e[1];continue;}
+  if(event&&/^\s+command: >-$/.test(fm[i])){const lines=[];while(fm[i+1]&&/^ {12}\S/.test(fm[i+1]))lines.push(fm[++i].trim());out[event]=lines.join(' ');}
+ }
+ return out;
+}
+function claudeHost(spool){
+ const cmds=hookCommands();
+ const env={...process.env,CLAUDE_PLUGIN_ROOT:pluginRoot,TOONKIT_3DREF_SPOOL:spool};
+ const hook=ev=>{const r=spawnInput('sh',['-c',cmds[ev.hook_event_name]],JSON.stringify(ev),{encoding:'utf8',env});assert.equal(r.status,0,r.stderr);assert.equal(r.stderr,'');return r.stdout.trim()?JSON.parse(r.stdout).hookSpecificOutput:null};
+ return {cmds,env,hook};
+}
+test('skill frontmatter declares one identical guarded hook for the three tool events',()=>{
+ const c=hookCommands();assert.deepEqual(Object.keys(c).sort(),['PostToolUse','PostToolUseFailure','PreToolUse']);
+ assert.equal(new Set(Object.values(c)).size,1);assert.match(c.PreToolUse,/exit 0;; esac/);assert.match(c.PreToolUse,/\$\{CLAUDE_PLUGIN_ROOT\}\/skills\/3dref\/scripts\/spool_hook\.py/);
+});
+test('Claude Code spooled relay completes the lifecycle without the model carrying payloads',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'toonkit-spool-'));try{
+  const spool=path.join(dir,'spool'),session=path.join(dir,'projects','session-1');fs.mkdirSync(path.join(session,'tool-results'),{recursive:true});
+  const transcript=session+'.jsonl';fs.mkdirSync(path.join(dir,'run'));
+  fs.copyFileSync(process.env.TOONKIT_TEST_BUNDLE,path.join(dir,'run','compiled.json'));
+  fs.writeFileSync(path.join(dir,'run','journal.jsonl'),JSON.stringify({type:'init',runId:'spooled-001',digest:B.digest})+'\n');
+  const m=mock(),h=claudeHost(spool);let modelChars=0,spilled=0,requests=0;
+  const invoke=args=>{const r=spawnInput(process.env.TOONKIT_TEST_PYTHON||'python3',['-B',path.join(scripts,'direct.py'),path.join(dir,'run'),...args],undefined,{encoding:'utf8',env:h.env,maxBuffer:16*1024*1024});assert.equal(r.status,0,r.stderr+' '+r.stdout);modelChars+=r.stdout.length;return JSON.parse(r.stdout)};
+  async function phase(name,args){
+   for(let count=0;count<100;count++){
+    const r=invoke(['step',name,'--spool','--args',JSON.stringify(args)]);
+    if(r.stage!=='tool-request')return r;
+    requests++;assert.equal(r.arguments,undefined);const toolName='mcp__plugin_toonkit_toonkit__'+r.tool,mark='3dref-spool:'+r.ioId;
+    assert.ok(Object.values(r.stubArguments).includes(mark));assert.ok(JSON.stringify(r.stubArguments).length<600);
+    const pre=h.hook({hook_event_name:'PreToolUse',tool_name:toolName,tool_input:r.stubArguments,transcript_path:transcript});
+    assert.equal(pre.permissionDecision,undefined);const input=pre.updatedInput;
+    const x=(await m.call(r.tool,input)).structuredContent;let text=JSON.stringify(x);
+    if(r.tool==='toonkit_canvas_reference3d_get_scene'&&!input.objectIds){
+     // Oversized result: the host saves it and passes a notice to hooks.
+     const file=path.join(session,'tool-results','mcp-get-scene-'+(++spilled)+'.txt');fs.writeFileSync(file,text);
+     text='Error: result ('+text.length.toLocaleString('en-US')+' characters) exceeds maximum allowed tokens. Output has been saved to '+file+'.\nFormat: JSON with schema: {...}';
+    }
+    const post=h.hook({hook_event_name:'PostToolUse',tool_name:toolName,tool_input:JSON.parse(JSON.stringify(input)),tool_response:text,transcript_path:transcript});
+    assert.match(post.updatedToolOutput,/response saved/);modelChars+=post.updatedToolOutput.length;
+    invoke(['accept',r.ioId]);invoke(['accept',r.ioId]);
+   }throw Error('unbounded relay');
+  }
+  await phase('createProject',{name:'Spooled fixture'});
+  await phase('createScene',{name:'Runners',projectVisible:true});
+  const ready=await phase('advance',opts);assert.equal(ready.stage,'export-ready');
+  assert.equal(ready.verified.keys,B.summary.storedKeys);assert.equal(m.changed,B.batches.length);assert.ok(spilled>=1);
+  m.output();
+  const done=await phase('finishExport',{ticketId:ready.ticket.ticketId,stage:'metadata-ready',videos:[{outputVideoNodeId:'output',durationSeconds:B.timing.durationSeconds,width:640,height:360,readyState:4,error:null}]});
+  assert.equal(done.stage,'complete');
+  assert.equal((await phase('group',{title:'Spooled previz'})).stage,'delivered');
+  const payload=m.calls.reduce((n,c)=>n+JSON.stringify(c.a).length,0);
+  assert.ok(modelChars*4<payload,'model-visible relay text '+modelChars+' vs payload '+payload);
+  assert.deepEqual(fs.readdirSync(spool).filter(f=>f!=='hook.log'),[]);assert.ok(requests>B.batches.length);
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+test('spool hook refuses unsafe stubs and saves only exact server results',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'toonkit-hook-'));try{
+  const spool=path.join(dir,'spool'),h=claudeHost(spool),id='0123456789abcdef01234567',mark='3dref-spool:'+id,tool='mcp__plugin_toonkit_toonkit__toonkit_canvas_reference3d_edit';
+  assert.equal(h.hook({hook_event_name:'PreToolUse',tool_name:tool,tool_input:{canvasId:'01REAL'}}),null);
+  assert.equal(h.hook({hook_event_name:'PostToolUse',tool_name:tool,tool_input:{canvasId:'01REAL'},tool_response:'{}'}),null);
+  assert.equal(fs.existsSync(spool),false,'guard must not start Python without a stub or pending request');
+  assert.equal(h.hook({hook_event_name:'PreToolUse',tool_name:tool,tool_input:{canvasId:mark}}).permissionDecision,'deny');
+  fs.mkdirSync(spool,{recursive:true});const args={canvasId:'01REAL',nodeId:'n',expectedRevision:'r1',commands:[{op:'keyframe.upsert',frame:1,patch:{transform:{position:[1.0,2.5,3]}}}],idempotencyKey:'k'};
+  fs.writeFileSync(path.join(spool,id+'.json'),JSON.stringify({tool:'toonkit_canvas_reference3d_edit',arguments:args}));
+  for(const paid of ['toonkit_generate_video','toonkit_canvas_generate_image','toonkit_get_canvas'])
+   assert.equal(h.hook({hook_event_name:'PreToolUse',tool_name:'mcp__plugin_toonkit_toonkit__'+paid,tool_input:{canvasId:mark,prompt:mark}}).permissionDecision,'deny');
+  const pre=h.hook({hook_event_name:'PreToolUse',tool_name:tool,tool_input:{canvasId:mark}});assert.deepEqual(pre.updatedInput,args);
+  const sent=JSON.parse(JSON.stringify(pre.updatedInput).replace('1.0','1'));
+  assert.match(h.hook({hook_event_name:'PostToolUseFailure',tool_name:tool,tool_input:sent,error:'fetch failed: socket hang up'}).additionalContext,/repeat the same stub call/);
+  assert.equal(fs.existsSync(path.join(spool,id+'.response.json')),false);
+  assert.match(h.hook({hook_event_name:'PostToolUse',tool_name:tool,tool_input:sent,tool_response:'Internal error'}).additionalContext,/could not be saved/);
+  assert.equal(fs.existsSync(path.join(spool,id+'.response.json')),false);
+  const error={code:'STALE_REVISION',message:'stale',mutated:false};
+  assert.match(h.hook({hook_event_name:'PostToolUseFailure',tool_name:tool,tool_input:sent,error:JSON.stringify(error)}).additionalContext,/server error saved/);
+  const saved=JSON.parse(fs.readFileSync(path.join(spool,id+'.response.json'),'utf8'));assert.equal(saved.isError,true);assert.deepEqual(JSON.parse(saved.content[0].text),error);
+  assert.equal(fs.existsSync(path.join(spool,id+'.pending')),false);
+  assert.equal(h.hook({hook_event_name:'PostToolUse',tool_name:tool,tool_input:sent,tool_response:'{"late":true}'}),null,'a settled request is never overwritten');
+  fs.writeFileSync(path.join(spool,id+'.json'),JSON.stringify({tool:'toonkit_canvas_reference3d_create',arguments:args}));
+  assert.equal(h.hook({hook_event_name:'PreToolUse',tool_name:tool,tool_input:{canvasId:mark}}).permissionDecision,'deny');
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+test('relay accept normalizes bare results and rejects malformed ones before journaling',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'toonkit-accept-'));try{
+  fs.copyFileSync(process.env.TOONKIT_TEST_BUNDLE,path.join(dir,'compiled.json'));
+  fs.writeFileSync(path.join(dir,'journal.jsonl'),JSON.stringify({type:'init',runId:'accept-0001',digest:B.digest})+'\n');
+  const env={...process.env,TOONKIT_3DREF_SPOOL:path.join(dir,'spool')};
+  const run=(args,input)=>spawnInput(process.env.TOONKIT_TEST_PYTHON||'python3',['-B',path.join(scripts,'direct.py'),dir,...args],input,{encoding:'utf8',env});
+  const r=JSON.parse(run(['step','createProject','--spool','--args','{"name":"Accept"}']).stdout);assert.equal(r.tool,'toonkit_canvas_reference3d_catalog');
+  assert.equal(r.stubArguments.cursor,'3dref-spool:'+r.ioId);
+  const before=fs.readFileSync(path.join(dir,'journal.jsonl'),'utf8');
+  for(const bad of ['{"content":[{"type":"text","text":"Internal error"}]}','[1,2]','{"content":[]}']){const x=run(['accept',r.ioId,'-'],bad);assert.equal(x.status,2);}
+  assert.match(run(['accept',r.ioId]).stderr,/No spooled response/);
+  assert.equal(fs.readFileSync(path.join(dir,'journal.jsonl'),'utf8'),before);
+  const m=mock(),catalog=(await m.call('toonkit_canvas_reference3d_catalog',{})).structuredContent;
+  assert.equal(run(['accept',r.ioId,'-'],JSON.stringify(catalog)).status,0);
+  const next=JSON.parse(run(['step','createProject','--spool','--args','{"name":"Accept"}']).stdout);
+  assert.equal(next.tool,'toonkit_create_canvas');for(const k of ['aspectRatio','name','idempotencyKey'])assert.equal(next.stubArguments[k],'3dref-spool:'+next.ioId);
+  const plain=JSON.parse(run(['step','createProject','--args','{"name":"Accept"}']).stdout);assert.equal(plain.ioId,next.ioId);assert.equal(plain.arguments.aspectRatio,B.timing.aspect);
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });

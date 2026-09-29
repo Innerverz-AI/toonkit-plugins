@@ -202,7 +202,10 @@ def compile_scene(spec,runtime=None,cache=None,offline=False):
     snapshots={}
     for c in keys:snapshots.setdefault((c['objectId'],c['frame']),{}).update(c['patch'])
     size=len(compact(list(snapshots.values())).encode())+len(snapshots)*80+len(compact(commands).encode())*2+len(actors)*2048+16384
-    if len(snapshots)>2000 or size>524288:raise ValueError('Measured motion exceeds live scene capacity; preserve requested timing and report the conflict')
+    if len(snapshots)>2000 or size>524288:
+        posed=sum(1 for v in snapshots.values() if v.get('pose'))
+        raise ValueError('Measured motion exceeds live scene capacity; preserve requested timing and report the conflict '
+                         f'(stored keys {len(snapshots)}/2000, of which {posed} carry body pose; estimated scene {size}/524288 bytes)')
     summary={'timing':timing,'objects':len(actors)+1+len(proxies),'actors':len(actors),'storedKeys':len(snapshots),'denseKeys':n*(len(actors)+1),
              'commands':sum(len(b['commands']) for b in batches),'batches':len(batches),'estimatedSceneBytes':size,'culledObjects':culled,
              'checks':{'preflight':checked},'reduction':reduction,'floorRoll':roll_report,'uniqueBodyBakes':len(body_cache)}

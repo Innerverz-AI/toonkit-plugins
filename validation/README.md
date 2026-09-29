@@ -17,6 +17,9 @@ A live release check additionally requires authenticated ToonKit MCP and visible
 
 The suites cover calculation/source motion, canonical bridge/cold-relay recovery,
 DOM export and the retained launcher combined with browser readiness failures.
+The Claude Code spooled relay runs the full lifecycle through the exact hook
+command declared in the 3dref skill frontmatter, including oversized results,
+structured tool errors, refused stubs and relay response validation.
 Regression cases include changed web filenames, changed saved geometry/timing,
 stale verification and retry authorization scoped to the exact export attempt.
 `tests/test_release.py` checks synchronized packaging, relocation, hash integrity

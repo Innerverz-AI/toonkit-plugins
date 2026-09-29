@@ -6,9 +6,11 @@ One compiler and bridge handle one or many actors. Use a fresh scene on a new or
 
 Resolve the skill's absolute path, a writable run directory and reusable dependency/source cache. Requirements: Python 3.9+, Node 20+, `three@0.184.0`, authenticated ToonKit MCP and a visible logged-in browser. The portable relay below uses the same Python/Node requirements. No prior project or session state is needed.
 
-Install the pinned dependency only if absent, locally:
+Keep `<cache>` persistent across runs (any writable location the host permits; `~/.cache/toonkit-3dref` when unrestricted). Install the pinned dependency only if `<cache>/runtime/node_modules/three/package.json` does not already report version `0.184.0`:
 
 `npm install --prefix <cache>/runtime --cache <cache>/npm --ignore-scripts --no-audit --no-fund three@0.184.0`
+
+A cold first run installs three (~40 MB) and fetches only the public FBX files the shot uses (4.4 MB for all six); later compiles take seconds.
 
 Write `spec.json` using [production input](production-input.md), then:
 

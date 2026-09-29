@@ -3,6 +3,37 @@ name: 3dref
 description: Create or edit ToonKit 3D camera/action previz when explicitly requested or selected for a production stage. Uses live MCP features and visible browser Export; deterministic and credit-free.
 metadata:
   short-description: Camera/action previz with efficient staging and export
+hooks:
+  PreToolUse:
+    - matcher: "mcp__.*toonkit.*__toonkit_(create_canvas|get_canvas|get_canvas_mutation|canvas_group_nodes|canvas_reference3d_(catalog|create|edit|get_scene))"
+      hooks:
+        - type: command
+          timeout: 30
+          command: >-
+            i=$(cat); d="${TOONKIT_3DREF_SPOOL:-$HOME/.cache/toonkit-3dref/spool}";
+            case "$i" in *'"3dref-spool:'*) ;; *) set -- "$d"/*.pending; [ -e "$1" ] || exit 0;; esac;
+            for p in python3 python; do if "$p" -c 'import sys; sys.exit(sys.version_info < (3, 8))' >/dev/null 2>&1; then
+            printf '%s' "$i" | "$p" "${CLAUDE_PLUGIN_ROOT}/skills/3dref/scripts/spool_hook.py"; exit 0; fi; done; exit 0
+  PostToolUse:
+    - matcher: "mcp__.*toonkit.*__toonkit_(create_canvas|get_canvas|get_canvas_mutation|canvas_group_nodes|canvas_reference3d_(catalog|create|edit|get_scene))"
+      hooks:
+        - type: command
+          timeout: 30
+          command: >-
+            i=$(cat); d="${TOONKIT_3DREF_SPOOL:-$HOME/.cache/toonkit-3dref/spool}";
+            case "$i" in *'"3dref-spool:'*) ;; *) set -- "$d"/*.pending; [ -e "$1" ] || exit 0;; esac;
+            for p in python3 python; do if "$p" -c 'import sys; sys.exit(sys.version_info < (3, 8))' >/dev/null 2>&1; then
+            printf '%s' "$i" | "$p" "${CLAUDE_PLUGIN_ROOT}/skills/3dref/scripts/spool_hook.py"; exit 0; fi; done; exit 0
+  PostToolUseFailure:
+    - matcher: "mcp__.*toonkit.*__toonkit_(create_canvas|get_canvas|get_canvas_mutation|canvas_group_nodes|canvas_reference3d_(catalog|create|edit|get_scene))"
+      hooks:
+        - type: command
+          timeout: 30
+          command: >-
+            i=$(cat); d="${TOONKIT_3DREF_SPOOL:-$HOME/.cache/toonkit-3dref/spool}";
+            case "$i" in *'"3dref-spool:'*) ;; *) set -- "$d"/*.pending; [ -e "$1" ] || exit 0;; esac;
+            for p in python3 python; do if "$p" -c 'import sys; sys.exit(sys.version_info < (3, 8))' >/dev/null 2>&1; then
+            printf '%s' "$i" | "$p" "${CLAUDE_PLUGIN_ROOT}/skills/3dref/scripts/spool_hook.py"; exit 0; fi; done; exit 0
 ---
 
 # 3D reference previz
@@ -17,9 +48,9 @@ Deliver an editable ToonKit scene and its playable source-linked video. Preserve
 
 ## Compiled route
 
-1. Write one compact `3dref-production-v2` spec from the user's references. Plan actors/camera first, then shot-relevant proxies and real support faces. Actor count is bounded by live capacity, not fixed at two.
-2. Compile in a fresh run directory. The package converts center/size to actual primitive pivots, bakes each distinct motion once, solves the wall-floor roll sign, culls irrelevant geometry, reduces keys and checks emitted interpolation. Fix concrete planning failures locally before writing. Default hold observations are advisory; explicit requested limits are enforced.
-3. Use the packaged runtime or [portable relay](references/direct.md), both over the same bridge. Keep the exact editor visible. Apply all base keys before pose overlays; wait for accepted pending work before new revisions.
+1. Read [conventions](references/conventions.md) and `references/examples/` first; do not study `scripts/` source (loading the launcher as [execution](references/execution.md) describes is expected). Write one compact `3dref-production-v2` spec from the user's references. Plan actors/camera first, then shot-relevant proxies and real support faces. Actor count is bounded by live capacity, not fixed at two.
+2. Compile in a fresh run directory. The package converts center/size to actual primitive pivots, bakes each distinct motion once, solves the wall-floor roll sign, culls irrelevant geometry, reduces keys and checks emitted interpolation. Fix concrete planning failures locally before writing: read only `<run>/diagnostic.json`, edit the spec, recompile (seconds). Default hold observations are advisory; explicit requested limits are enforced.
+3. Use the packaged runtime or [portable relay](references/direct.md), both over the same bridge. On Claude Code the relay parks MCP payloads through this skill's hook (`--spool`); never retype requests or responses. Skill hooks apply only to the main conversation, so run the relay there, not in a subagent. Keep the exact editor visible. Apply all base keys before pose overlays; wait for accepted pending work before new revisions.
 4. Compare exposed saved fields with the bundle. Check timing in the visible editor when safe readback omits it. Verify a fresh scene before Export. Never Save stale initial UI data over verified work.
 5. Export through the visible editor. Record whether a click actually occurred; readiness failure with confirmed no click may resume. Uncertain clicks must be reconciled with existing output before another attempt. Confirm the new source edge, exact output node and decoded duration/dimensions.
 

@@ -31,7 +31,11 @@ claude plugin validate .
 
 Also run Codex's `plugin-creator/scripts/validate_plugin.py` and
 `skill-creator/scripts/quick_validate.py` from the skill installations on that
-development host. They are optional developer tools, not dependencies of this
+development host. `quick_validate.py` reports the 3dref skill's `hooks`
+frontmatter key as unexpected: that key is Claude Code's documented skill hook
+field, and Codex loads the skill and ignores it (check with
+`codex debug prompt-input` in a checkout). Treat that one report as expected;
+any other finding is a failure. They are optional developer tools, not dependencies of this
 repository or the installed plugin. CI uses the packaged checks and tests.
 
 ## Version and prepare
@@ -81,5 +85,10 @@ Keep explicit versions synchronized because Claude uses them for update detectio
 The compiler and bridge are shared; browser APIs are not. Codex uses retained tool
 memory plus its visible browser helper. Claude Code uses the cold-process relay
 and normal Claude browser operations documented in `references/direct.md`. Keep
-that route testable without Codex APIs. A manifest validation pass does not prove
+that route testable without Codex APIs. Its payload hook is declared only in the
+3dref skill frontmatter so it exists only in sessions that invoke that skill;
+do not move it to a plugin-level hook file: that would run for every Toonkit
+tool call in every session, and Codex's plugin specification lists hooks among
+its default component discovery. `test_bridge.mjs` executes the exact
+declared hook command. A manifest validation pass does not prove
 fresh installation, OAuth, actual browser operation or rendered artistic quality.

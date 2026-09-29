@@ -68,8 +68,8 @@ def validate(data):
         for aid,rule in beat['actors'].items():
             if rule.get('offscreen'):
                 require(bool(rule.get('reason')),'Intentional offscreen actor needs a reason');continue
-            lo,hi=rule['height'];require(0<lo<hi<=1.5,'Declare positive subject height band as fraction of image height')
-            safe=rule.get('frameSafeNdc',.9);require(0<safe<=1.5,'Invalid framing margin')
+            lo,hi=rule['height'];require(0<lo<hi<=1.5,'Declare positive subject height band as fraction of image height (0 < min < max <= 1.5) at '+name+':'+aid)
+            safe=rule.get('frameSafeNdc',.9);require(0<safe<=1.5,'Invalid framing margin (0 < frameSafeNdc <= 1.5) at '+name+':'+aid)
             for i in frames:
                 q=projections[aid][i]
                 if any(v[2]<=near or v[2]>=far or abs(v[0])>safe or abs(v[1])>safe for v in q.values()): fail(name+':framing:'+aid,i,markers={k:v for k,v in q.items() if v[2]<=near or v[2]>=far or abs(v[0])>safe or abs(v[1])>safe},safeNdc=safe,depth=[near,far])

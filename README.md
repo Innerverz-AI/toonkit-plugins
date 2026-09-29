@@ -29,7 +29,9 @@ For `3dref` previz additionally:
   public sources and checksum-verified; subsequent cached runs can work offline
   until scene authoring. Browser/MCP access is still required for delivery.
 - The retained Codex launcher uses a POSIX shell. Other hosts use the portable
-  Python/Node relay; other operating systems still need a host smoke test.
+  Python/Node relay; other operating systems still need a host smoke test. On
+  Claude Code the relay's payload hook also uses a POSIX shell (Git Bash on
+  Windows); without one the relay falls back to passing payloads directly.
 
 Installing the plugin and authorizing your Toonkit account are separate steps.
 Do not put passwords or access tokens in the plugin files.
@@ -116,8 +118,10 @@ capabilities and user scope govern those operations; no source bake is required.
 
 Measured stock-human choreography uses `3dref-production-v2` and a shared bridge.
 Codex keeps payloads in tool memory; Claude Code relays the same requests through
-`scripts/direct.py`. Claude uses its own browser tools, not the Codex browser API.
-Its relay costs more model handoffs. Explicit invocation conventions are preserved.
+`scripts/direct.py`, and the 3dref skill's hook keeps request and response payloads
+out of the model in the main conversation. Claude uses its own browser tools, not
+the Codex browser API. The relay still costs more model handoffs than Codex's
+retained runtime. Explicit invocation conventions are preserved.
 
 The compiler uses simple shot-relevant boxes, stock humans and one camera. It
 checks finite support, wall-floor roll direction, shared body/root slow motion,
@@ -141,14 +145,23 @@ plugin creates a separate connection; disconnect the old one in
 ## Verification scope
 
 - Offline suites cover geometry, motion/timing, scene fidelity, failure recovery,
-  the cold-process portable lifecycle and combined launcher/browser readiness recovery.
+  the cold-process portable lifecycle, the Claude Code spooled relay through the
+  exact declared skill hook (stub safety, oversized and error results) and combined
+  launcher/browser readiness recovery.
 - Live Codex checks cover compiled three-actor wall roll/slow motion with matched
   decoded Export, plus native catalog operations. See the release evidence for the
   exact results; these checks do not certify every shot, update or client.
-- Still unverified live: fresh plugin installation/OAuth in both clients, Claude
-  browser export, other operating systems and paid generation. Version 0.2.2 changes
-  planning instructions only; deterministic tests do not measure model compliance
-  with those instructions. Authentication configuration is unchanged.
+- Live Claude Code check (0.2.3, macOS, fresh `claude -p` process, production
+  MCP): skill hook registration and the spooled compiled relay of a 15 s one-actor
+  shot on a new canvas (50 spooled requests, including a 481k-character readback
+  beyond the host output limit, none retyped by the model), one visible-editor
+  Export with matched decoded output, and grouping. Skill hooks do not run inside
+  Claude Code subagents; those use the plain relay.
+- Still unverified live: fresh plugin installation/OAuth in both clients (the
+  Claude check used an existing authorization), other operating systems including
+  Windows Claude Code with or without Git Bash, and paid generation. Deterministic
+  tests do not measure model compliance with planning instructions.
+  Authentication configuration is unchanged.
 
 For development and release commands, see [CONTRIBUTING](CONTRIBUTING.md).
 Tests run at development/release time, not on every user's previz request.

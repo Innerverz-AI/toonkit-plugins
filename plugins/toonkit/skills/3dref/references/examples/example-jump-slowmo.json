@@ -1,0 +1,95 @@
+{
+  "format": "3dref-production-v2",
+  "timing": {"durationSeconds": 8, "fps": 24, "aspect": "16:9"},
+  "timeWarp": [
+    {"time": 0, "speed": 1},
+    {"time": 2.6, "speed": 1},
+    {"time": 3.2, "speed": 0.25},
+    {"time": 5.4, "speed": 0.25},
+    {"time": 6.0, "speed": 1},
+    {"time": 8, "speed": 1}
+  ],
+  "objects": [
+    {
+      "id": "ground",
+      "center": [15, -0.1, 0],
+      "size": [50, 0.2, 20],
+      "color": "#707070",
+      "role": "contact",
+      "purpose": "plaza floor; +y face is the approach surface"
+    },
+    {
+      "id": "ledge",
+      "center": [24.65, 0.4, 1.05],
+      "size": [19.7, 0.8, 3.0],
+      "color": "#c9a66b",
+      "role": "contact",
+      "purpose": "raised 0.8 m ledge; near edge x=14.8, spans z -0.45..2.55 so the path runs near its camera-side edge; +y face is the landing surface"
+    },
+    {
+      "id": "wall",
+      "center": [20, 2, 4],
+      "size": [40, 4, 0.5],
+      "color": "#9aa7b8",
+      "role": "visible",
+      "purpose": "backdrop wall on the runner's right (+Z) for depth"
+    }
+  ],
+  "actors": [
+    {
+      "id": "jumper",
+      "name": "Jumper",
+      "color": "#3f7fd9",
+      "motion": {
+        "format": "3dref-motion-v1",
+        "rig": "stock-human",
+        "baseline": "running",
+        "segments": [
+          {"preset": "running", "start": 0, "end": 2.75, "sourceStart": 0, "speed": 0.8, "loop": true},
+          {"preset": "jumping", "start": 2.53, "end": 6.13, "sourceStart": 0.1, "speed": 1, "loop": false},
+          {"preset": "running", "start": 5.93, "end": 8, "sourceStart": 0, "speed": 0.8, "loop": true}
+        ]
+      },
+      "path": [
+        {"time": 0, "position": [0, 0, 0], "rotation": [0, 90, 0], "velocity": [4.45, 0, 0]},
+        {"time": 2.95, "position": [13.1275, 0, 0], "rotation": [0, 90, 0], "velocity": [4.45, 0, 0]},
+        {"time": 3.53, "position": [15.7085, 0.8, 0], "rotation": [0, 90, 0], "velocity": [4.45, 0, 0]},
+        {"time": 5.9, "position": [26.255, 0.8, 0], "rotation": [0, 90, 0], "velocity": [4.45, 0, 0]}
+      ],
+      "support": [
+        {"start": 0, "end": 3.1, "mode": "surface", "surface": {"object": "ground", "face": "+y"}},
+        {
+          "start": 3.1,
+          "end": 5.42,
+          "mode": "flight",
+          "takeoff": {"object": "ground", "face": "+y"},
+          "landing": {"object": "ledge", "face": "+y"},
+          "maxSeconds": 2.4,
+          "reason": "running jump up onto the ledge, stretched by slow motion"
+        },
+        {"start": 5.42, "end": 8, "mode": "surface", "surface": {"object": "ledge", "face": "+y"}}
+      ]
+    }
+  ],
+  "camera": {
+    "targetHeight": 0.85,
+    "anchors": [
+      {"time": 0, "azimuth": 160, "elevation": 2, "distance": 6, "focalLength": 35},
+      {"time": 2.6, "azimuth": 150, "elevation": -4, "distance": 5, "focalLength": 32},
+      {"time": 3.2, "azimuth": 140, "elevation": -8, "distance": 4.5, "focalLength": 30},
+      {"time": 5.4, "azimuth": 130, "elevation": -6, "distance": 4.2, "focalLength": 30},
+      {"time": 6.0, "azimuth": 150, "elevation": -2, "distance": 4.5, "focalLength": 32},
+      {"time": 8, "azimuth": 200, "elevation": 4, "distance": 5.5, "focalLength": 35}
+    ]
+  },
+  "quality": {
+    "beats": [
+      {"name": "approach", "start": 0, "end": 2.6, "actors": {"jumper": {"height": [0.25, 0.8]}}},
+      {"name": "ramp-down", "start": 2.6, "end": 3.2, "actors": {"jumper": {"height": [0.25, 0.9]}}},
+      {"name": "slowmo-jump", "start": 3.2, "end": 5.4, "actors": {"jumper": {"height": [0.25, 0.95], "actionRate": [0.25, 0.25]}}},
+      {"name": "ramp-up", "start": 5.4, "end": 6.0, "actors": {"jumper": {"height": [0.25, 0.9]}}},
+      {"name": "run-on-ledge", "start": 6.0, "end": 8, "actors": {"jumper": {"height": [0.25, 0.8]}}}
+    ],
+    "limits": {"camera": {"maxSpeed": 8, "maxAngularSpeed": 90}, "jumper": {"maxSpeed": 7}}
+  }
+}

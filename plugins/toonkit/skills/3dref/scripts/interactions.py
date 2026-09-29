@@ -21,8 +21,9 @@ def segment_distance(p1,q1,p2,q2):
 
 def validate(actors,proxies,quality,fps):
     issues={};minimum=float('inf');world={}
-    def fail(key,f):
+    def fail(key,f,markers=()):
         v=issues.setdefault(key,{'count':0,'firstFrame':f,'lastFrame':f});v['count']+=1;v['lastFrame']=f
+        if markers:v['markers']=sorted(set(v.get('markers',[]))|set(markers))
     for a in actors:
         world[a['id']]=[{k:add(s['position'],rotate(v,s['rotation'])) for k,v in s['markers'].items()} for s in a['samples']]
     for i,a in enumerate(actors):
@@ -46,6 +47,7 @@ def validate(actors,proxies,quality,fps):
         for a in actors:
             rows=world[a['id']]
             for f in range(1,len(rows)):
-                if any(ray_box(local(rows[f-1][k]),local(rows[f][k]),p['bounds']) for k in rows[f]):fail('swept-marker-solid:'+p['id']+':'+a['id'],f)
+                hit=[k for k in rows[f] if ray_box(local(rows[f-1][k]),local(rows[f][k]),p['bounds'])]
+                if hit:fail('swept-marker-solid:'+p['id']+':'+a['id'],f,hit)
     return {'passed':not issues,'issues':issues,'minimumActorAxisDistance':minimum if math.isfinite(minimum) else None,
             'scope':'Body axes and swept bone markers against proxy solids; no skin/sole collision certificate'}

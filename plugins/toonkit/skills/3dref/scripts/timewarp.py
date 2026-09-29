@@ -24,3 +24,10 @@ class TimeWarp:
 
     @property
     def identity(self): return all(r['speed']==1 for r in self.rows)
+
+
+if __name__=='__main__':
+    # python3 timewarp.py '<timeWarp rows JSON>' <durationSeconds> <output seconds>...
+    import json,sys
+    warp=TimeWarp(json.loads(sys.argv[1]),float(sys.argv[2]))
+    print(json.dumps({t:{'actionTime':round(a,6),'speed':round(v,6)} for t,(a,v) in ((t,warp.at(float(t))) for t in sys.argv[3:])}))

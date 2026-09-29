@@ -1,0 +1,58 @@
+{
+  "format": "3dref-production-v2",
+  "timing": {"durationSeconds": 8, "fps": 24, "aspect": "16:9"},
+  "objects": [
+    {
+      "id": "street",
+      "center": [0, -0.1, 20],
+      "size": [16, 0.2, 70],
+      "color": "#6b6b6b",
+      "role": "contact",
+      "purpose": "asphalt street; +y face is the running floor"
+    },
+    {
+      "id": "block-left",
+      "center": [8, 4, 20],
+      "size": [4, 8, 60],
+      "color": "#b08d6e",
+      "role": "visible",
+      "purpose": "building row on the runner's left (+X) for parallax"
+    },
+    {
+      "id": "block-right",
+      "center": [-8, 5, 20],
+      "size": [4, 10, 60],
+      "color": "#8a9bb0",
+      "role": "visible",
+      "purpose": "building row on the runner's right (-X)"
+    }
+  ],
+  "actors": [
+    {
+      "id": "runner",
+      "name": "Runner",
+      "color": "#d94f4f",
+      "preset": "running",
+      "path": [{"time": 0, "position": [0, 0, 0]}, {"time": 8, "position": [0, 0, 44.49]}],
+      "support": [{"start": 0, "end": 8, "mode": "surface", "surface": {"object": "street", "face": "+y"}}]
+    }
+  ],
+  "camera": {
+    "targetHeight": 0.85,
+    "anchors": [
+      {"time": 0, "azimuth": 180, "elevation": -4, "distance": 4.2, "focalLength": 32},
+      {"time": 2.5, "azimuth": 180, "elevation": -4, "distance": 4.2, "focalLength": 32, "hold": true},
+      {"time": 4.5, "azimuth": 90, "elevation": 2, "distance": 3.6, "focalLength": 30},
+      {"time": 6.5, "azimuth": 0, "elevation": 4, "distance": 4.2, "focalLength": 32, "hold": true},
+      {"time": 8, "azimuth": 0, "elevation": 4, "distance": 4.6, "focalLength": 32}
+    ]
+  },
+  "quality": {
+    "beats": [
+      {"name": "follow-behind", "start": 0, "end": 2.5, "actors": {"runner": {"height": [0.4, 0.85]}}},
+      {"name": "orbit-left", "start": 2.5, "end": 6.5, "cameraMotion": {"minRotationDegrees": 150}, "actors": {"runner": {"height": [0.4, 0.9]}}},
+      {"name": "lead-front", "start": 6.5, "end": 8, "actors": {"runner": {"height": [0.35, 0.85]}}}
+    ],
+    "limits": {"camera": {"maxSpeed": 10, "maxAngularSpeed": 120}, "runner": {"maxSpeed": 6.5}}
+  }
+}

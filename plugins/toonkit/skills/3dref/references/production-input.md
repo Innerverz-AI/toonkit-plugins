@@ -1,5 +1,7 @@
 # Production input v2
 
+Axes, camera azimuth, faces, motion phases and fixes: [conventions](conventions.md); compiled specs: `examples/`.
+
 Write a JSON spec. IDs are unique lower-case strings matching `[a-z][a-z0-9_-]{0,47}`. Dimensions/positions are meters, rotations are XYZ degrees, time is seconds. Defaults: 24fps, 16:9. No project IDs or per-frame arrays belong in the spec.
 
 Required top-level fields:

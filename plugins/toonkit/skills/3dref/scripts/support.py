@@ -5,7 +5,7 @@ from spatial import add,rotate,dot,sub
 
 def check_support(actors,proxies,fps,duration):
     issues=[];metrics={}
-    def fail(actor,frame,reason):issues.append({'actor':actor,'frame':frame,'reason':reason})
+    def fail(actor,frame,reason,meters=None):issues.append({'actor':actor,'frame':frame,'reason':reason,**({} if meters is None else {'meters':meters})})
     for a in actors:
         aid=a['id'];states=a.get('support',[]);samples=a['samples'];covered=set();unsupported=0.;peak_gap=0.
         for s in states:
@@ -43,7 +43,7 @@ def check_support(actors,proxies,fps,duration):
                 if mode=='surface' and dot(up,candidates[0]['normal'])<.98:fail(aid,i,'actor-up-not-support-normal')
                 distances=[signed_distance(v,f) for f in candidates for v in feet if on_face(v,f,.05)]
                 if not distances:fail(aid,i,'feet-outside-support-face');continue
-                if mode=='surface' and min(distances)<-.03:fail(aid,i,'feet-penetrate-support')
+                if mode=='surface' and min(distances)<-.03:fail(aid,i,'feet-penetrate-support',round(min(distances),4))
                 gap=min(abs(d) for d in distances);peak_gap=max(peak_gap,gap)
                 action_dt=(row['actionTime']-samples[i-1]['actionTime']) if i else 0
                 unsupported=unsupported+action_dt if gap>.08 else 0
@@ -54,4 +54,5 @@ def check_support(actors,proxies,fps,duration):
     grouped={}
     for e in issues:
         key=e['actor']+':'+e['reason'];v=grouped.setdefault(key,{'count':0,'firstFrame':e['frame'],'lastFrame':e['frame']});v['count']+=1;v['lastFrame']=e['frame']
+        if 'meters' in e and e['meters']<v.get('deepestMeters',0):v['deepestMeters']=e['meters'];v['deepestFrame']=e['frame']
     return {'passed':not issues,'issues':grouped,'actors':metrics,'scope':'Finite support faces and source bone markers; no skin/sole IK certificate'}

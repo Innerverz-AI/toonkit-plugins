@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.2.3 — 2026-09-29
+
+- Claude Code portable relay: `direct.py step --spool` parks every MCP request
+  and the 3dref skill's own hook (skill frontmatter, registered only when the
+  skill is invoked) substitutes it and saves the result, so the model no longer
+  retypes requests or responses. Results beyond the host output limit and
+  structured tool errors are captured; transport failures are retried unchanged.
+- The hook runs only for the eight credit-free relay tools, refuses stubs on any
+  other tool, respects normal permission rules and starts Python only while a
+  spooled request is pending. Stub fields are invalid on the server, so a stub
+  sent without the hook is rejected without mutation. Skill hooks apply to the
+  main conversation only; subagents use the plain relay.
+- `accept` wraps a bare result object and rejects malformed envelopes before
+  journaling, so a mistyped response can no longer block a run.
+- Spec conventions and compiled examples for the production input; clearer
+  capacity, swept-marker, feet-penetration and framing-band diagnostics; a
+  `timewarp.py` output-to-action time helper. Passing compiled bundles are
+  byte-identical to 0.2.2.
+- Portable relay instructions: confirm browser control and sign-in before
+  creating a canvas, sleep and rerun on `wait`, keep one MCP connection per run.
+- Release tests feed child stdin from files; `spawnSync` input occasionally never
+  reached EOF and hung the portable relay test (also reproducible on 0.2.2).
+- Codex, the retained runtime, the shared bridge, MCP/authentication and
+  marketplace configuration are unchanged. Codex loads the skill unchanged and
+  ignores the Claude-only `hooks` frontmatter key.
+
+Runs compiled with 0.2.2 continue with this version: the bundle, journal and
+bridge formats are unchanged. No account migration is required; start a new
+Claude Code session after updating so the skill hook is loaded.
+
 ## 0.2.2 — 2026-09-24
 
 - Make the existing AI plan report explicit before paid generation even without
