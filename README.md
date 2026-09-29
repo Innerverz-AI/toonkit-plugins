@@ -3,7 +3,7 @@
 **English** | [한국어](README.ko.md)
 
 Generate images and videos and work with Toonkit canvases from **Codex** or
-**Claude Code**. This plugin bundles two shared skills with an authenticated MCP
+**Claude Code**. This plugin bundles three shared skills with an authenticated MCP
 connection to Toonkit. No local MCP server is required.
 
 Previz uses native MCP for simple work and a shared compiler for measured contact,
@@ -33,6 +33,12 @@ For `3dref` previz additionally:
   Claude Code the relay's payload hook also uses a POSIX shell (Git Bash on
   Windows); without one the relay falls back to passing payloads directly.
 
+For `toonkit-motion-mv` additionally:
+
+- ffmpeg with libvpx-vp9 and Node 20+ for the processing toolkit; Node 22+ and npm
+  for the HyperFrames renderer, which each project installs with pinned versions
+  (network access on first scaffold).
+
 Installing the plugin and authorizing your Toonkit account are separate steps.
 Do not put passwords or access tokens in the plugin files.
 
@@ -41,6 +47,7 @@ Do not put passwords or access tokens in the plugin files.
 | Skill | Use |
 |---|---|
 | `toonkit-project-manager` | Activates for Toonkit image, video and voice work. Plans the production, quotes credits before paid work, runs generations and delivers on a canvas. |
+| `toonkit-motion-mv` | 2D anime motion-graphics videos made with Toonkit characters, used on explicit request or handed over by the project manager: beat-synced shot plans, chroma-keyed character sheets, pose stills and short cel-anime plates, keying/retiming, and a deterministic HyperFrames + GSAP composite rendered locally to MP4. |
 | `3dref` | 3D previz: authors a Toonkit 3D Reference scene (staging, motion, camera) over MCP and exports a reference video through the visible editor. Use it only on explicit request (Codex `$3dref`, Claude Code `/toonkit:3dref`). |
 
 ## Install
@@ -77,6 +84,7 @@ the requested permissions.
 - “Create an image of a rainy Tokyo alley with Toonkit.”
 - “Check the image models and options available for this Toonkit canvas.”
 - “Estimate the credits needed to turn this image into a video.”
+- “Make a 12-second 2D anime motion-graphics intro with my Toonkit character and kinetic typography, cut to 128 BPM.”
 - “Use 3dref: a 6-second 16:9 previz of a character walking toward a slowly pulling-back camera.”
 
 The project-manager skill reads `toonkit_get_generation_guide` from the server
@@ -98,6 +106,7 @@ plugins/toonkit/
   .codex-plugin/plugin.json            Codex manifest + MCP configuration
   .claude-plugin/plugin.json           Claude Code manifest + MCP configuration
   skills/toonkit-project-manager/      Production planning, cost gates, AI generation
+  skills/toonkit-motion-mv/            Motion-graphics MV workflow, spec, mvkit toolkit, motion kit
   skills/3dref/                        Shared compiler, runtime/relay, references
 validation/                           Development tests; not skill runtime inputs
 scripts/release.py                     Version/path checks and reproducible archive
@@ -162,6 +171,12 @@ plugin creates a separate connection; disconnect the old one in
   Windows Claude Code with or without Git Bash, and paid generation. Deterministic
   tests do not measure model compliance with planning instructions.
   Authentication configuration is unchanged.
+
+- Motion-MV (0.3.0): offline suite for analysis (spans, smear windows, flat-chroma
+  check), keying with despill/alpha, frame-exact retiming, outline stroke, beat phase,
+  lyric snapping, cycle retime, shotkit build, plan and motion-token lint. Live check
+  (macOS, Claude Code, production MCP): one 74 s 2D anime motion-graphics video end to end. Other hosts
+  and operating systems remain unverified.
 
 For development and release commands, see [CONTRIBUTING](CONTRIBUTING.md).
 Tests run at development/release time, not on every user's previz request.

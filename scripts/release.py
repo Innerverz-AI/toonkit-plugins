@@ -69,7 +69,7 @@ def check(tag=None):
     require(re.search(r'^## ' + re.escape(version) + r'(?:\s|$)',
                       (ROOT / 'CHANGELOG.md').read_text(encoding='utf-8'), re.M), 'Missing version changelog')
     require({p.name for p in (PLUGIN / 'skills').iterdir() if p.is_dir()} ==
-            {'3dref', 'toonkit-project-manager'}, 'Shared skill set changed')
+            {'3dref', 'toonkit-motion-mv', 'toonkit-project-manager'}, 'Shared skill set changed')
     files = plugin_files()
     for path in files:
         text = path.read_text(encoding='utf-8')
@@ -84,7 +84,7 @@ def check(tag=None):
                 continue
             require((path.parent / target.split('#')[0]).is_file(),
                     'Broken document link: ' + str(path.relative_to(ROOT)) + ' -> ' + target)
-    return {'version': version, 'pluginFiles': len(files), 'sharedSkills': 2,
+    return {'version': version, 'pluginFiles': len(files), 'sharedSkills': 3,
             'marketplaces': ['codex', 'claude'], 'tag': tag}
 
 

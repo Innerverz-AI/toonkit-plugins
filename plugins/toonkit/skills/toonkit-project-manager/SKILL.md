@@ -14,6 +14,7 @@ Before new paid generation, give a **visible plan even without “plan first”*
 | Request/stage | Load |
 |---|---|
 | Only deterministic 3D previz, staging/motion/camera or browser-runtime export | The co-distributed [3dref](../3dref/SKILL.md) skill and its routed execution instructions. **No AI workflow or SSOT.** |
+| An explicit 2D anime **motion-graphics** video request (kinetic typography/shapes composited with ToonKit characters) | Hand over to the co-distributed [toonkit-motion-mv](../toonkit-motion-mv/SKILL.md) skill. It routes its paid stages back to the AI production workflow below. Ordinary video or clip requests stay here. |
 | AI image/video/voice generation, including R2V after previz | [AI production](references/ai-production.md) and [SSOT](TOONKIT-GENERATION-SSOT.md), once before choosing models/references or spending. |
 | Existing result/status without new generation | Relevant read-only status tools, not production manuals or a new job. |
 
